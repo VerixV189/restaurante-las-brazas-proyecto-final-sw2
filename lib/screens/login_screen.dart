@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:restaurante_movil/screens/home_screen.dart';
+import 'package:restaurante_movil/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,9 +18,35 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true; // para mostrar/ocultar contraseña
 
   // Metodo de login (por ahora vacio, lo llenamos despues)
-  void _login() {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
+
+      try {
+        final user = await AuthService.login(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+
+        // Login exitoso -> guardar token y navegar
+        print('Token: ${user.token}'); // solo para probar
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
+      } catch (e) {
+        // Mostrar error al usuario
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
 
       // Por ahora solo simula un login exitoso
       Future.delayed(const Duration(seconds: 2), () {
@@ -106,20 +134,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24,),
+                const SizedBox(height: 24),
 
                 // Boton login
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login, 
+                    onPressed: _isLoading ? null : _login,
                     child: _isLoading
-                      ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2,),
-                      )
-                      : const Text('Iniciar Sesión'),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Iniciar Sesión'),
                   ),
                 ),
               ],

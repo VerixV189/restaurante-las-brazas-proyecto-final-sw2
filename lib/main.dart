@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:restaurante_movil/screens/home_screen.dart';
 import 'package:restaurante_movil/screens/login_screen.dart';
 import 'package:restaurante_movil/screens/onboarding_screen.dart';
+import 'package:restaurante_movil/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -11,14 +13,16 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final bool onboardingDone = prefs.getBool('onboarding_done') ?? false;
+  final token = await AuthService.getToken();
 
-  runApp(MyApp(showOnboarding: !onboardingDone));
+  runApp(MyApp(showOnboarding: !onboardingDone, isLoggedIn: token != null));
 }
 
 class MyApp extends StatelessWidget {
   final bool showOnboarding;
+  final bool isLoggedIn;
 
-  const MyApp({super.key, required this.showOnboarding});
+  const MyApp({super.key, required this.showOnboarding, required this.isLoggedIn});
 
   // This widget is the root of your application.
   @override
@@ -44,7 +48,11 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: showOnboarding ? const OnboardingScreen() : const LoginScreen(),
+      home: showOnboarding 
+        ? const OnboardingScreen()
+        : isLoggedIn
+          ? const HomeScreen()
+          : const LoginScreen(),
     );
   }
 }
