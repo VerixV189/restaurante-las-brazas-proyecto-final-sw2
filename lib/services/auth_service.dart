@@ -13,7 +13,7 @@ class AuthService {
         'Accept': 'application/json',
       },
       body: jsonEncode({'email': email, 'password': password}),
-    );
+    ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
