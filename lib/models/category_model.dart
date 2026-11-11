@@ -5,7 +5,7 @@ class CategoryModel {
   final String? description;
   final String? icon;
   final bool isActive;
-  final int dishescount;
+  final int dishesCount;
 
   CategoryModel({
     required this.id,
@@ -14,18 +14,18 @@ class CategoryModel {
     this.description,
     this.icon,
     required this.isActive,
-    required this.dishescount,
+    required this.dishesCount,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json['id'],
-      name: json['name'],
-      slug: json['slug'],
-      description: json['description'],
-      icon: json['icon'],
+      id: (json['id'] as num).toInt(),
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      description: json['description']?.toString(),
+      icon: json['icon']?.toString(),
       isActive: json['is_active'] ?? true,
-      dishescount: json['dishes_count'] ?? 0,
+      dishesCount: (json['dishes_count'] as num?)?.toInt() ?? 0,
     );
   }
 }
