@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:restaurante_movil/models/dish_model.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class DishCard extends StatelessWidget {
   final DishModel dish;
@@ -40,24 +41,12 @@ class DishCard extends StatelessWidget {
                                         strokeWidth: 2,
                                       ),
                                     ),
-                          errorBuilder: (c, e, s) => Container(
-                            color: Colors.deepOrange.shade50,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.local_fire_department,
-                              size: 44,
-                              color: Colors.deepOrange,
-                            ),
+                          errorBuilder: (c, e, s) => const Center(
+                            child: BrandLogo(size: 76, borderRadius: 12),
                           ),
                         )
-                      : Container(
-                          color: Colors.deepOrange.shade50,
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.restaurant,
-                            size: 42,
-                            color: Colors.deepOrange,
-                          ),
+                      : const Center(
+                          child: BrandLogo(size: 76, borderRadius: 12),
                         ),
                   if (dish.isMeat)
                     Positioned(
@@ -125,8 +114,11 @@ class DishCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.timer_outlined,
-                          size: 13, color: Colors.grey),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 13,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         '${dish.prepTimeMinutes} min',

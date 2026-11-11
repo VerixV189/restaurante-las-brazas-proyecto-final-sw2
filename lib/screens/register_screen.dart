@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -64,8 +65,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Crear Cuenta')),
+      appBar: AppBar(
+        title: const Text('Crear Cuenta'),
+        actions: [
+          IconButton(
+            tooltip: isDark ? 'Modo Claro' : 'Modo Oscuro',
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              context.read<AuthProvider>().toggleDarkMode(isDark);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -74,16 +88,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
-                  Icons.local_fire_department,
-                  size: 64,
-                  color: Colors.deepOrange,
-                ),
-                const SizedBox(height: 8),
+                const Center(child: BrandLogo(size: 140)),
+                const SizedBox(height: 14),
                 const Text(
-                  'Únete a Las Brazas',
+                  'Únete a Las Brazas Steakhouse',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 const Text(
@@ -173,4 +183,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-

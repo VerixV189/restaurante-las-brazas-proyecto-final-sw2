@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:restaurante_movil/models/address_model.dart';
 import 'package:restaurante_movil/models/order_model.dart';
 import 'package:restaurante_movil/services/order_service.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 import 'package:restaurante_movil/widgets/tracking_map_widget.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -123,6 +124,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ],
                 ),
                 const Divider(),
+                const Center(child: BrandLogo(size: 84, borderRadius: 16)),
+                const SizedBox(height: 8),
                 const Text(
                   'RESTAURANTE LAS BRAZAS S.A.',
                   textAlign: TextAlign.center,

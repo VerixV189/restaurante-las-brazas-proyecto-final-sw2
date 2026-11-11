@@ -19,17 +19,20 @@ class AppNotification {
 
 class AuthProvider extends ChangeNotifier {
   UserModel? _user;
+  ThemeMode _themeMode = ThemeMode.system;
   int _loyaltyPoints = 120; // Programa de Puntos / Cashback inicial (RF-23)
   List<String> _dietaryPreferences = [];
   final List<AppNotification> _notifications = [
     AppNotification(
       title: '🔥 ¡Bienvenido a Las Brazas!',
-      body: 'Usa el cupón BRAZAS10 o disfruta envío gratis en pedidos mayores a \$50.',
+      body:
+          'Usa el cupón BRAZAS10 o disfruta envío gratis en pedidos mayores a \$50.',
     ),
   ];
 
   UserModel? get user => _user;
   bool get isAuthenticated => _user != null;
+  ThemeMode get themeMode => _themeMode;
   int get loyaltyPoints => _loyaltyPoints;
   double get cashbackBalance => _loyaltyPoints * 0.10; // 10 pts = $1.00
   List<String> get dietaryPreferences => List.unmodifiable(_dietaryPreferences);
@@ -42,6 +45,14 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _loyaltyPoints = prefs.getInt('loyalty_points') ?? 120;
     _dietaryPreferences = prefs.getStringList('dietary_prefs') ?? [];
+    final savedTheme = prefs.getString('theme_mode');
+    if (savedTheme == 'dark') {
+      _themeMode = ThemeMode.dark;
+    } else if (savedTheme == 'light') {
+      _themeMode = ThemeMode.light;
+    } else {
+      _themeMode = ThemeMode.system;
+    }
     notifyListeners();
     if (_user != null) {
       final fresh = await AuthService.fetchMe();
@@ -50,6 +61,22 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    final value = mode == ThemeMode.dark
+        ? 'dark'
+        : mode == ThemeMode.light
+            ? 'light'
+            : 'system';
+    await prefs.setString('theme_mode', value);
+    notifyListeners();
+  }
+
+  Future<void> toggleDarkMode(bool isCurrentlyDark) async {
+    await setThemeMode(isCurrentlyDark ? ThemeMode.light : ThemeMode.dark);
   }
 
   void setUser(UserModel user) {
@@ -111,4 +138,3 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-

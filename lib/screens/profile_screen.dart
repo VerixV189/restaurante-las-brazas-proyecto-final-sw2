@@ -5,6 +5,7 @@ import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/addresses_screen.dart';
 import 'package:restaurante_movil/screens/delivery_driver_screen.dart';
 import 'package:restaurante_movil/screens/login_screen.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class ProfileScreen extends StatelessWidget {
   final bool embedded;
@@ -22,38 +23,123 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final body = ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Tarjeta de Perfil
+        // Tarjeta de Perfil con Logo Oficial
         Card(
           child: ListTile(
-            leading: CircleAvatar(
-              radius: 26,
-              backgroundColor: Colors.deepOrange.shade100,
-              child: const Icon(
-                Icons.person,
-                size: 30,
-                color: Colors.deepOrange,
-              ),
-            ),
+            leading: const BrandLogo(size: 54, circular: true),
             title: Text(
               user?.name ?? 'Cliente Las Brazas',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
             ),
-            subtitle: Text('${user?.email ?? ''}\nRol: ${user?.role ?? 'Cliente'}'),
+            subtitle:
+                Text('${user?.email ?? ''}\nRol: ${user?.role ?? 'Cliente'}'),
             isThreeLine: true,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Selector de Tema (Modo Claro y Modo Oscuro con sus respectivos logos)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.palette_outlined, color: Color(0xFFE8832A)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Apariencia y Logos (Modo Claro / Oscuro)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Column(
+                      children: [
+                        const BrandLogo(
+                          size: 72,
+                          forceDark: false,
+                          borderRadius: 12,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Logo Claro',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight:
+                                !isDark ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        const BrandLogo(
+                          size: 72,
+                          forceDark: true,
+                          borderRadius: 12,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Logo Oscuro',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight:
+                                isDark ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode),
+                      label: Text('Claro'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode),
+                      label: Text('Oscuro'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.brightness_auto),
+                      label: Text('Auto'),
+                    ),
+                  ],
+                  selected: {auth.themeMode},
+                  onSelectionChanged: (s) => auth.setThemeMode(s.first),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 14),
 
         // RF-23: Programa de Puntos / Cashback
         Card(
-          color: Colors.deepOrange.shade50,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: Colors.deepOrange.shade200),
+            side: BorderSide(
+              color: const Color(0xFFE8832A).withValues(alpha: 0.45),
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -63,18 +149,22 @@ class ProfileScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.stars, color: Colors.deepOrange),
-                        SizedBox(width: 8),
-                        Text(
-                          'Puntos Las Brazas & Cashback (RF-23)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                    const Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Icons.stars, color: Colors.deepOrange),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Puntos Las Brazas & Cashback (RF-23)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     Chip(
                       label: Text(
@@ -275,4 +365,3 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
-

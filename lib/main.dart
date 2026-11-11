@@ -44,18 +44,45 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.select<AuthProvider, ThemeMode>((a) => a.themeMode);
+
     return MaterialApp(
-      title: 'Restaurante Las Brazas',
+      title: 'Las Brazas Steakhouse',
       debugShowCheckedModeBanner: false,
+      themeMode: themeMode,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFFAF9F7),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepOrange,
-          secondary: Colors.deepPurple,
+          brightness: Brightness.light,
+          seedColor: const Color(0xFFD85A1A),
+          primary: const Color(0xFFD85A1A),
+          secondary: const Color(0xFF22252A),
         ),
         appBarTheme: const AppBarTheme(
           centerTitle: false,
           elevation: 0,
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1E2025),
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF181A1F),
+        colorScheme: ColorScheme.fromSeed(
+          brightness: Brightness.dark,
+          seedColor: const Color(0xFFE8832A),
+          primary: const Color(0xFFE8832A),
+          secondary: const Color(0xFFF3C68F),
+          surface: const Color(0xFF22252C),
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          backgroundColor: Color(0xFF1E2025),
+          foregroundColor: Color(0xFFF5D0A9),
         ),
       ),
       home: showOnboarding

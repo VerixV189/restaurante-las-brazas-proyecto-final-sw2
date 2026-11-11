@@ -4,6 +4,7 @@ import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
 import 'package:restaurante_movil/screens/register_screen.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,40 +72,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            tooltip: isDark ? 'Modo Claro' : 'Modo Oscuro',
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              context.read<AuthProvider>().toggleDarkMode(isDark);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.deepOrange.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.local_fire_department,
-                      size: 64,
-                      color: Colors.deepOrange,
-                    ),
-                  ),
+                  const BrandLogo(size: 165),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Restaurante Las Brazas',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
                   const Text(
                     'Cortes a la leña, pedidos en vivo y reservaciones',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,

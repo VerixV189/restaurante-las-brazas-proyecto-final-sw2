@@ -4,6 +4,7 @@ import 'package:restaurante_movil/models/cart_item_model.dart';
 import 'package:restaurante_movil/models/dish_model.dart';
 import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/cart_screen.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class DishDetailScreen extends StatefulWidget {
   final DishModel dish;
@@ -113,28 +114,14 @@ class _DishDetailScreenState extends State<DishDetailScreen> {
                       height: 240,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => Container(
+                      errorBuilder: (c, e, s) => const SizedBox(
                         height: 220,
-                        color: Colors.deepOrange.shade50,
-                        child: const Center(
-                          child: Icon(
-                            Icons.local_fire_department,
-                            size: 64,
-                            color: Colors.deepOrange,
-                          ),
-                        ),
+                        child: Center(child: BrandLogo(size: 130)),
                       ),
                     )
-                  : Container(
+                  : const SizedBox(
                       height: 220,
-                      color: Colors.deepOrange.shade50,
-                      child: const Center(
-                        child: Icon(
-                          Icons.restaurant,
-                          size: 64,
-                          color: Colors.deepOrange,
-                        ),
-                      ),
+                      child: Center(child: BrandLogo(size: 130)),
                     ),
               Positioned(
                 bottom: 12,
@@ -199,7 +186,7 @@ class _DishDetailScreenState extends State<DishDetailScreen> {
                 const SizedBox(height: 10),
                 Text(
                   dish.description ?? 'Especialidad preparada al momento.',
-                  style: const TextStyle(fontSize: 15, color: Colors.black87),
+                  style: const TextStyle(fontSize: 15),
                 ),
                 const Divider(height: 32),
 
@@ -239,11 +226,15 @@ class _DishDetailScreenState extends State<DishDetailScreen> {
                 ],
 
                 // RF-02: Guarnición a elegir
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.dinner_dining, color: Colors.deepPurple, size: 20),
-                    SizedBox(width: 6),
-                    Text(
+                    Icon(
+                      Icons.dinner_dining,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
                       'Guarnición de Acompañamiento',
                       style: TextStyle(
                         fontSize: 16,
@@ -318,10 +309,10 @@ class _DishDetailScreenState extends State<DishDetailScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
@@ -331,7 +322,7 @@ class _DishDetailScreenState extends State<DishDetailScreen> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: Colors.grey.shade400),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(

@@ -13,6 +13,7 @@ import 'package:restaurante_movil/screens/profile_screen.dart';
 import 'package:restaurante_movil/screens/reservations_screen.dart';
 import 'package:restaurante_movil/services/menu_service.dart';
 import 'package:restaurante_movil/widgets/app_drawer.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 import 'package:restaurante_movil/widgets/dish_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -100,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
     final auth = context.watch<AuthProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final titles = [
       'Las Brazas • Menú',
@@ -111,8 +113,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_currentTabIndex]),
+        title: Row(
+          children: [
+            const BrandLogo(size: 32, circular: true),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                titles[_currentTabIndex],
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
+          // Botón para alternar Modo Claro / Modo Oscuro con su logo correspondiente
+          IconButton(
+            tooltip: isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro',
+            icon: Icon(
+              isDark ? Icons.light_mode : Icons.dark_mode,
+              color: const Color(0xFFE8832A),
+            ),
+            onPressed: () => auth.toggleDarkMode(isDark),
+          ),
           // Botón de Soporte directo / WhatsApp (RF-16)
           IconButton(
             tooltip: 'Soporte / WhatsApp (RF-16)',
@@ -199,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
+              const BrandLogo(size: 96),
               const SizedBox(height: 12),
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
@@ -215,6 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final recommended = _getRecommendedDish(auth);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -223,13 +246,15 @@ class _HomeScreenState extends State<HomeScreen> {
           // Barra superior con selector rápido de Tipo de Entrega (RF-04) y Puntos (RF-23)
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-            color: Colors.deepPurple.shade50,
+            color: isDark
+                ? const Color(0xFF22252C)
+                : const Color(0xFFF5ECE6),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.delivery_dining,
                   size: 18,
-                  color: Colors.deepPurple,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 6),
                 Expanded(

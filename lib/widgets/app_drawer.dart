@@ -9,6 +9,7 @@ import 'package:restaurante_movil/screens/login_screen.dart';
 import 'package:restaurante_movil/screens/orders_screen.dart';
 import 'package:restaurante_movil/screens/profile_screen.dart';
 import 'package:restaurante_movil/screens/reservations_screen.dart';
+import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -28,11 +29,16 @@ class AppDrawer extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.support_agent, color: Colors.green, size: 28),
+                  BrandLogo(size: 38, circular: true),
                   SizedBox(width: 10),
-                  Text(
-                    'Soporte Directo / WhatsApp (RF-16)',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Soporte Directo / WhatsApp (RF-16)',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -86,35 +92,85 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFBF360C), Color(0xFF512DA8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2025) : Colors.white,
+              border: Border(
+                bottom: BorderSide(
+                  color: const Color(0xFFE8832A).withValues(alpha: 0.35),
+                ),
               ),
             ),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.local_fire_department,
-                color: Colors.deepOrange,
-                size: 36,
-              ),
-            ),
-            accountName: Text(
-              user?.name ?? 'Restaurante Las Brazas',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            accountEmail: Text(
-              '${user?.email ?? 'Invitado'} • ⭐ ${auth.loyaltyPoints} pts',
+            child: Row(
+              children: [
+                const BrandLogo(size: 84, borderRadius: 16),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.name ?? 'Las Brazas',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user?.email ?? 'Steakhouse',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8832A).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '⭐ ${auth.loyaltyPoints} pts • ${user?.role ?? 'Cliente'}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE8832A),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
+          SwitchListTile(
+            secondary: Icon(
+              isDark ? Icons.dark_mode : Icons.light_mode,
+              color: const Color(0xFFE8832A),
+            ),
+            title: Text(isDark ? 'Modo Oscuro Activo' : 'Modo Claro Activo'),
+            subtitle: const Text('Cambia tema y logo automáticamente'),
+            value: isDark,
+            onChanged: (_) => auth.toggleDarkMode(isDark),
+          ),
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.menu_book),
             title: const Text('Menú Digital'),
