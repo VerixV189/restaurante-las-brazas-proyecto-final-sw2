@@ -64,6 +64,7 @@ class BackendConfigSheet extends StatefulWidget {
 
 class _BackendConfigSheetState extends State<BackendConfigSheet> {
   late final TextEditingController _urlCtrl;
+  late final TextEditingController _geminiKeyCtrl;
   bool _testing = false;
   String? _statusMessage;
   bool? _statusSuccess;
@@ -72,11 +73,13 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
   void initState() {
     super.initState();
     _urlCtrl = TextEditingController(text: ApiConstants.baseUrl);
+    _geminiKeyCtrl = TextEditingController(text: ApiConstants.geminiApiKey);
   }
 
   @override
   void dispose() {
     _urlCtrl.dispose();
+    _geminiKeyCtrl.dispose();
     super.dispose();
   }
 
@@ -88,6 +91,7 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
     });
     try {
       await ApiConstants.setCustomBaseUrl(_urlCtrl.text);
+      await ApiConstants.setCustomGeminiKey(_geminiKeyCtrl.text);
       _urlCtrl.text = ApiConstants.baseUrl;
       final res = await HttpClient.get(ApiConstants.health);
       if (!mounted) return;
@@ -115,13 +119,14 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
 
   Future<void> _saveAndClose() async {
     await ApiConstants.setCustomBaseUrl(_urlCtrl.text);
+    await ApiConstants.setCustomGeminiKey(_geminiKeyCtrl.text);
     if (!mounted) return;
     final applied = ApiConstants.baseUrl;
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.green.shade700,
-        content: Text('Backend actualizado en caliente: $applied'),
+        content: Text('Configuración actualizada en caliente: $applied'),
       ),
     );
   }
@@ -145,18 +150,22 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.dns_outlined, color: Color(0xFFE8832A)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Configuración Oculta de Backend',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
+                const Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.dns_outlined, color: Color(0xFFE8832A)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Configuración Oculta de Backend e IA',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -165,7 +174,7 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
               ],
             ),
             const Text(
-              'Cambia la IP o dominio del servidor Laravel en tiempo real sin volver a compilar la app.',
+              'Cambia la IP del servidor o la API Key de Gemini en tiempo real sin volver a compilar.',
               style: TextStyle(fontSize: 12.5, color: Colors.grey),
             ),
             const SizedBox(height: 14),
@@ -174,7 +183,7 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
               keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'URL o IP del Servidor (o link /api/v1/health)',
+                labelText: 'URL o IP del Servidor',
                 hintText: 'http://3.210.205.227',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.link),
@@ -219,6 +228,20 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
                   },
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _geminiKeyCtrl,
+              decoration: InputDecoration(
+                labelText: 'Gemini API Key (Opcional para conexión directa)',
+                hintText: 'AIzaSy...',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.auto_awesome_outlined),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _geminiKeyCtrl.clear(),
+                ),
+              ),
             ),
             if (_statusMessage != null) ...[
               const SizedBox(height: 12),
@@ -274,7 +297,7 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
                   child: ElevatedButton.icon(
                     onPressed: _saveAndClose,
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text('Guardar IP'),
+                    label: const Text('Guardar'),
                   ),
                 ),
               ],
@@ -285,4 +308,3 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
     );
   }
 }
-

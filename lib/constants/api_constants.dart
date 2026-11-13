@@ -3,14 +3,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
   static const String _prefsKey = 'custom_base_url';
+  static const String _geminiKeyPrefs = 'custom_gemini_api_key';
   static String? _overrideBaseUrl;
+  static String? _overrideGeminiKey;
 
-  /// Inicializa la URL personalizada guardada en el dispositivo (si existe)
+  /// Inicializa la URL y Gemini API Key guardadas en el dispositivo (si existen)
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefsKey);
     if (saved != null && saved.trim().isNotEmpty) {
       _overrideBaseUrl = normalizeBaseUrl(saved);
+    }
+    final savedGemini = prefs.getString(_geminiKeyPrefs);
+    if (savedGemini != null && savedGemini.trim().isNotEmpty) {
+      _overrideGeminiKey = savedGemini.trim();
     }
   }
 
@@ -21,8 +27,10 @@ class ApiConstants {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'http://$url';
     }
-    // Si el usuario pegó la ruta completa (/api/v1/health o /api/v1), dejamos solo el host[:puerto]
-    url = url.replaceAll(RegExp(r'/api/v1/health/?$', caseSensitive: false), '');
+    url = url.replaceAll(
+      RegExp(r'/api/v1/health/?$', caseSensitive: false),
+      '',
+    );
     url = url.replaceAll(RegExp(r'/api/v1/?$', caseSensitive: false), '');
     url = url.replaceAll(RegExp(r'/api/?$', caseSensitive: false), '');
     while (url.endsWith('/')) {
@@ -44,7 +52,22 @@ class ApiConstants {
     }
   }
 
+  /// Guarda y aplica en caliente una API Key de Google Gemini
+  static Future<void> setCustomGeminiKey(String? rawKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (rawKey == null || rawKey.trim().isEmpty) {
+      _overrideGeminiKey = null;
+      await prefs.remove(_geminiKeyPrefs);
+    } else {
+      _overrideGeminiKey = rawKey.trim();
+      await prefs.setString(_geminiKeyPrefs, _overrideGeminiKey!);
+    }
+  }
+
   static String? get customBaseUrl => _overrideBaseUrl;
+
+  static String get geminiApiKey =>
+      _overrideGeminiKey ?? (dotenv.env['GEMINI_API_KEY']?.trim() ?? '');
 
   // Lee la URL personalizada en memoria o la del .env
   static String get baseUrl =>
@@ -67,11 +90,11 @@ class ApiConstants {
   static String get dishes => '$_api/dishes';
   static String dishById(int id) => '$_api/dishes/$id';
 
-  // Endpoints de Direcciones del Cliente (RF-05, RF-13)
+  // Endpoints de Direcciones del Cliente
   static String get addresses => '$_api/customer/addresses';
   static String addressById(int id) => '$_api/customer/addresses/$id';
 
-  // Endpoints de Pedidos, Cotización, Cupones y Facturación (RF-03 a RF-11, RF-14, RF-22)
+  // Endpoints de Pedidos, Cotización, Cupones y Facturación
   static String get ordersQuote => '$_api/orders/quote';
   static String get couponsValidate => '$_api/coupons/validate';
   static String get orders => '$_api/orders';
@@ -82,20 +105,21 @@ class ApiConstants {
   static String orderReorder(int id) => '$_api/orders/$id/reorder';
   static String orderCancel(int id) => '$_api/orders/$id/cancel';
 
-  // Endpoints de Reservas y Zonas (RF-12, RF-13)
+  // Endpoints de Reservas y Zonas
   static String get areas => '$_api/areas';
   static String get reservationsAvailability =>
       '$_api/reservations/availability';
   static String get reservations => '$_api/reservations';
   static String reservationCancel(int id) => '$_api/reservations/$id/cancel';
 
-  // Endpoints de Repartidor / Delivery (RF-17, RF-18, RF-19)
+  // Endpoints de Repartidor / Delivery
   static String get deliveryPending => '$_api/delivery/pending';
   static String get deliveryMine => '$_api/delivery/mine';
   static String deliveryTake(int id) => '$_api/delivery/$id/take';
   static String deliveryPickup(int id) => '$_api/delivery/$id/pickup';
   static String deliveryConfirm(int id) => '$_api/delivery/$id/confirm';
 
-  // Endpoint de Asistente IA (RF-26, RF-27)
+  // Endpoints de Asistente IA
+  static String get aiChatV1 => '$_api/ai/chat';
   static String get aiChat => '$baseUrl/ai/chat';
 }

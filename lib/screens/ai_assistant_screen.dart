@@ -47,8 +47,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       _ChatMessage(
         sender: 'ai',
         text:
-            '🔥 ¡Hola! Soy el **Asistente Gastronómico IA de Las Brazas** (RF-26 / RF-27).\n\n'
-            'Puedes preguntarme por cortes de carne, términos de cocción, tiempos de preparación, el estado de tus pedidos/reservas, o dictarme tu pedido en lenguaje natural (ej. *"Pídeme una arrachera término medio con papas y un queso fundido"*).',
+            '🔥 ¡Hola! Soy el **Asistente Gastronómico IA de Las Brazas**.\n\n'
+            'Puedes preguntarme por cortes de carne, términos de cocción, tiempos de preparación, el estado de tus pedidos o reservas, o dictarme tu orden en lenguaje natural (ej. "Pídeme una arrachera término medio con papas y un queso fundido").',
       ),
     );
     _loadContextData();
@@ -108,7 +108,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     });
   }
 
-  /// RF-26: Simulación de dictado por voz para armar orden en lenguaje natural
   Future<void> _simulateVoiceDictation() async {
     setState(() => _listeningVoice = true);
     await Future.delayed(const Duration(seconds: 2));
@@ -120,8 +119,62 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _sendMessage(sampleVoiceCommand);
   }
 
+  /// Renderiza texto limpio convirtiendo cualquier **negrita** o *cursiva* en estilos reales sin mostrar asteriscos
+  Widget _buildFormattedMessage(String rawText, {required Color textColor}) {
+    final spans = <TextSpan>[];
+    final pattern = RegExp(r'\*\*(.+?)\*\*|\*(.+?)\*');
+    int lastEnd = 0;
+
+    for (final match in pattern.allMatches(rawText)) {
+      if (match.start > lastEnd) {
+        spans.add(
+          TextSpan(
+            text: rawText.substring(lastEnd, match.start).replaceAll('*', ''),
+          ),
+        );
+      }
+      if (match.group(1) != null) {
+        spans.add(
+          TextSpan(
+            text: match.group(1)!.replaceAll('*', ''),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        );
+      } else if (match.group(2) != null) {
+        spans.add(
+          TextSpan(
+            text: match.group(2)!.replaceAll('*', ''),
+            style: const TextStyle(fontStyle: FontStyle.italic),
+          ),
+        );
+      }
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < rawText.length) {
+      spans.add(
+        TextSpan(
+          text: rawText.substring(lastEnd).replaceAll('*', ''),
+        ),
+      );
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          color: textColor,
+          fontSize: 14,
+          height: 1.38,
+        ),
+        children: spans,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final content = Column(
       children: [
         // Chips de consulta rápida
@@ -146,6 +199,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             itemBuilder: (context, index) {
               final m = _messages[index];
               final isUser = m.sender == 'user';
+              final bubbleBg = isUser
+                  ? Theme.of(context).colorScheme.primary
+                  : (isDark ? const Color(0xFF262A34) : Colors.grey.shade100);
+              final textColor = isUser
+                  ? Colors.white
+                  : (isDark ? Colors.white : Colors.black87);
+
               return Align(
                 alignment:
                     isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -156,21 +216,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isUser
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade100,
+                    color: bubbleBg,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        m.text,
-                        style: TextStyle(
-                          color: isUser ? Colors.white : Colors.black87,
-                          fontSize: 14,
-                        ),
-                      ),
+                      _buildFormattedMessage(m.text, textColor: textColor),
                       if (m.suggestedItems.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         SizedBox(
@@ -222,11 +274,14 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  _listeningVoice
-                      ? '🎙️ Escuchando tu orden por voz...'
-                      : 'Consultando con el Maestro Parrillero IA...',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                Flexible(
+                  child: Text(
+                    _listeningVoice
+                        ? '🎙️ Escuchando tu orden por voz...'
+                        : 'Consultando con el Maestro Parrillero IA...',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 ),
               ],
             ),
@@ -237,7 +292,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             child: Row(
               children: [
                 IconButton.filledTonal(
-                  tooltip: 'Dictar pedido por voz (RF-26)',
+                  tooltip: 'Dictar pedido por voz',
                   onPressed: _listeningVoice ? null : _simulateVoiceDictation,
                   icon: Icon(
                     _listeningVoice ? Icons.mic : Icons.mic_none,
@@ -250,8 +305,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                     controller: _msgCtrl,
                     onSubmitted: (_) => _sendMessage(),
                     decoration: const InputDecoration(
-                      hintText:
-                          'Pregunta o dicta tu orden ("Pídeme una arrachera...")',
+                      hintText: 'Pregunta o dicta tu orden...',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -273,7 +327,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Asistente Gastronómico IA (RF-26 / RF-27)'),
+        title: const Text('Asistente Gastronómico IA'),
       ),
       body: content,
     );
@@ -289,4 +343,3 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     );
   }
 }
-
