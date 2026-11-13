@@ -104,23 +104,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final titles = [
-      'Las Brazas • Menú',
+      'Las Brazas',
       'Mis Pedidos',
-      'Reservas de Mesas',
+      'Reservas',
       'Asistente IA',
       'Mi Perfil',
     ];
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 0,
         title: Row(
           children: [
             const BrandLogo(size: 32, circular: true),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 titles[_currentTabIndex],
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -128,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           // Botón para alternar Modo Claro / Modo Oscuro con su logo correspondiente
           IconButton(
+            visualDensity: VisualDensity.compact,
             tooltip: isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro',
             icon: Icon(
               isDark ? Icons.light_mode : Icons.dark_mode,
@@ -135,16 +141,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             onPressed: () => auth.toggleDarkMode(isDark),
           ),
-          // Botón de Soporte directo / WhatsApp (RF-16)
+          // Botón de Soporte directo / WhatsApp
           IconButton(
-            tooltip: 'Soporte / WhatsApp (RF-16)',
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Soporte / WhatsApp',
             icon: const Icon(Icons.support_agent, color: Colors.green),
             onPressed: () => AppDrawer.showSupportSheet(context),
           ),
           // Icono de carrito con contador en vivo
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 6),
             child: IconButton(
+              visualDensity: VisualDensity.compact,
               tooltip: 'Ver carrito',
               onPressed: () {
                 Navigator.push(
@@ -354,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Recomendado para hoy (RF-25): ${recommended.name} • \$${recommended.price.toStringAsFixed(2)}',
+                          'Recomendado hoy: ${recommended.name} • \$${recommended.price.toStringAsFixed(2)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

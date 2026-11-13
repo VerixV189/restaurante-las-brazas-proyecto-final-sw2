@@ -98,7 +98,7 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Navegación GPS • Pedido #${order.id} (RF-18)',
+                'Navegación GPS • Pedido #${order.id}',
                 style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
@@ -186,7 +186,7 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Confirmar Entrega #${order.id} (RF-19)',
+                      'Confirmar Entrega #${order.id}',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -216,9 +216,11 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          '2. Firma digital del cliente en pantalla:',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        const Expanded(
+                          child: Text(
+                            '2. Firma digital del cliente en pantalla:',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
                         TextButton(
                           onPressed: () =>
@@ -305,7 +307,7 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Módulo Repartidor (RF-17 a RF-19)'),
+        title: const Text('Módulo Repartidor'),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -429,7 +431,7 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
                     OutlinedButton.icon(
                       onPressed: () => _openGpsRouteModal(o),
                       icon: const Icon(Icons.directions, size: 18),
-                      label: const Text('Ruta GPS (RF-18)'),
+                      label: const Text('Ruta GPS'),
                     ),
                     OutlinedButton.icon(
                       onPressed: () => _pickupOrder(o),
@@ -439,7 +441,7 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
                     ElevatedButton.icon(
                       onPressed: () => _openConfirmDeliveryDialog(o),
                       icon: const Icon(Icons.pin, size: 18),
-                      label: const Text('Confirmar PIN / Firma (RF-19)'),
+                      label: const Text('Confirmar PIN / Firma'),
                     ),
                   ],
                 ),

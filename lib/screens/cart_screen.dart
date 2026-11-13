@@ -120,9 +120,9 @@ class _CartScreenState extends State<CartScreen> {
           : ListView(
               padding: const EdgeInsets.all(14),
               children: [
-                // RF-04: Selección del Tipo de Entrega
+                // Selección del Tipo de Entrega
                 const Text(
-                  'Modalidad de Entrega (RF-04)',
+                  'Modalidad de Entrega',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 8),
@@ -165,7 +165,7 @@ class _CartScreenState extends State<CartScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        'Tiempo estimado: ${eta[0]} - ${eta[1]} min (RF-06)',
+                        'Tiempo estimado: ${eta[0]} - ${eta[1]} min',
                       ),
                       trailing: TextButton(
                         onPressed: () {
@@ -319,11 +319,13 @@ class _CartScreenState extends State<CartScreen> {
                         color: Colors.deepOrange,
                       ),
                       SizedBox(width: 6),
-                      Text(
-                        '¿Deseas complementar tu orden? (RF-24)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      Expanded(
+                        child: Text(
+                          '¿Deseas complementar tu orden?',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -405,7 +407,7 @@ class _CartScreenState extends State<CartScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Cupón de Descuento (RF-22: ej. BRAZAS10, ENVIOGRATIS)',
+                          'Cupón de Descuento (ej. BRAZAS10, ENVIOGRATIS)',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,

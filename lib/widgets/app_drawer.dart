@@ -34,7 +34,7 @@ class AppDrawer extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Soporte Directo / WhatsApp (RF-16)',
+                      'Soporte Directo / WhatsApp',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
@@ -260,7 +260,7 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.support_agent, color: Colors.green),
-            title: const Text('Soporte / WhatsApp (RF-16)'),
+            title: const Text('Soporte / WhatsApp'),
             onTap: () {
               Navigator.pop(context);
               showSupportSheet(context);

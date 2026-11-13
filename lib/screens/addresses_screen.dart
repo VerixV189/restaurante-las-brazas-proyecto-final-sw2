@@ -167,7 +167,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                     ),
                     const SizedBox(height: 14),
                     const Text(
-                      'Ubicación en Mapa GPS y Cobertura (RF-05, RF-21)',
+                      'Ubicación en Mapa GPS y Cobertura',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
@@ -309,9 +309,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.selectMode
-              ? 'Seleccionar Dirección'
-              : 'Mis Direcciones (RF-05 / RF-13)',
+          widget.selectMode ? 'Seleccionar Dirección' : 'Mis Direcciones',
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(

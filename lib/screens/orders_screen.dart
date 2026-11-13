@@ -124,11 +124,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Pedido #${o.id} • ${o.orderTypeLabel}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                                Expanded(
+                                  child: Text(
+                                    'Pedido #${o.id} • ${o.orderTypeLabel}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
                                   ),
                                 ),
                                 Chip(
@@ -150,15 +152,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.end,
                               children: [
                                 OutlinedButton.icon(
                                   onPressed: () => _reorder(o),
                                   icon: const Icon(Icons.replay, size: 18),
-                                  label: const Text('Volver a pedir (RF-14)'),
+                                  label: const Text('Volver a pedir'),
                                 ),
-                                const SizedBox(width: 8),
                                 ElevatedButton.icon(
                                   onPressed: () {
                                     Navigator.push(

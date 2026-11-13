@@ -182,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
-                          'O continúa con Social Auth (RF-12)',
+                          'O continúa con',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ),

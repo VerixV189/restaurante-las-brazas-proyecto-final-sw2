@@ -167,7 +167,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           // Sección de Entrega
           if (cart.orderType == 'delivery') ...[
             const Text(
-              '1. Dirección de Envío (RF-05)',
+              '1. Dirección de Envío',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -209,9 +209,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 16),
           ],
 
-          // RF-07: Métodos de Pago Móvil
+          // Métodos de Pago Móvil
           const Text(
-            '2. Método de Pago (RF-07)',
+            '2. Método de Pago',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -358,7 +358,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
-                      'Solicitar Factura Fiscal (RF-08)',
+                      'Solicitar Factura Fiscal',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: const Text(

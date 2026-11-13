@@ -210,7 +210,7 @@ class _ReservationsScreenState extends State<ReservationsScreen>
     if (widget.embedded) return body;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reservas de Mesas (RF-12 / RF-13)')),
+      appBar: AppBar(title: const Text('Reservas de Mesas')),
       body: body,
     );
   }
@@ -490,7 +490,7 @@ class _ReservationsScreenState extends State<ReservationsScreen>
             ),
           const SizedBox(height: 20),
           const Text(
-            'Historial de Visitas (RF-13)',
+            'Historial de Visitas',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),

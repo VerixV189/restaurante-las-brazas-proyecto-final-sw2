@@ -102,20 +102,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.picture_as_pdf, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text(
-                          'Comprobante Fiscal Digital (RF-09)',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                    const Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Icons.picture_as_pdf, color: Colors.red),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Comprobante Fiscal Digital',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
@@ -311,7 +314,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'PIN de Seguridad para Entrega (RF-19)',
+                                    'PIN de Seguridad para Entrega',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -359,11 +362,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Seguimiento en Tiempo Real (RF-11)',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                              const Expanded(
+                                child: Text(
+                                  'Seguimiento en Tiempo Real',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                               Chip(
@@ -379,11 +384,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                   ),
 
-                  // RF-20: Mapa interactivo de Tracking GPS del Repartidor
+                  // Mapa interactivo de Tracking GPS del Repartidor
                   if (_order!.orderType == 'delivery') ...[
                     const SizedBox(height: 14),
                     const Text(
-                      'Mapa de Tracking GPS en Tiempo Real (RF-20)',
+                      'Mapa de Tracking GPS en Tiempo Real',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -471,7 +476,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     label: Text(
                       _downloadingPdf
                           ? 'Generando PDF...'
-                          : 'Ver / Descargar Factura PDF (RF-09)',
+                          : 'Ver / Descargar Factura PDF',
                     ),
                   ),
 

@@ -55,11 +55,13 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.palette_outlined, color: Color(0xFFE8832A)),
                     SizedBox(width: 8),
-                    Text(
-                      'Apariencia y Logos (Modo Claro / Oscuro)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                    Expanded(
+                      child: Text(
+                        'Apariencia y Tema de la App',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ],
@@ -157,7 +159,7 @@ class ProfileScreen extends StatelessWidget {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Puntos Las Brazas & Cashback (RF-23)',
+                              'Puntos Las Brazas & Cashback',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
@@ -227,7 +229,7 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Preferencias Gastronómicas y Alergias (RF-25)',
+                  'Preferencias Gastronómicas y Alergias',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 4),
@@ -261,7 +263,7 @@ class ProfileScreen extends StatelessWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.location_on_outlined),
-                title: const Text('Libreta de Direcciones Guardadas (RF-13)'),
+                title: const Text('Libreta de Direcciones Guardadas'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.push(
@@ -273,7 +275,7 @@ class ProfileScreen extends StatelessWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.delivery_dining),
-                title: const Text('Vista / Panel de Repartidor (RF-17 a RF-19)'),
+                title: const Text('Panel de Repartidor'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.push(
@@ -290,7 +292,7 @@ class ProfileScreen extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // RF-15: Bandeja de Notificaciones Push de Estado
+        // Bandeja de Notificaciones Push de Estado
         Card(
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -298,16 +300,21 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Notificaciones de Estado (RF-15)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                    const Expanded(
+                      child: Text(
+                        'Notificaciones de Estado',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                     TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        visualDensity: VisualDensity.compact,
+                      ),
                       onPressed: auth.markAllNotificationsRead,
                       child: const Text('Marcar leídas'),
                     ),
