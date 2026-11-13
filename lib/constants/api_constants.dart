@@ -1,9 +1,55 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
-  // Lee la URL base del .env
+  static const String _prefsKey = 'custom_base_url';
+  static String? _overrideBaseUrl;
+
+  /// Inicializa la URL personalizada guardada en el dispositivo (si existe)
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefsKey);
+    if (saved != null && saved.trim().isNotEmpty) {
+      _overrideBaseUrl = normalizeBaseUrl(saved);
+    }
+  }
+
+  /// Normaliza cualquier URL o IP (incluso si pegan http://3.210.205.227/api/v1/health)
+  static String normalizeBaseUrl(String raw) {
+    var url = raw.trim();
+    if (url.isEmpty) return 'http://3.210.205.227';
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'http://$url';
+    }
+    // Si el usuario pegó la ruta completa (/api/v1/health o /api/v1), dejamos solo el host[:puerto]
+    url = url.replaceAll(RegExp(r'/api/v1/health/?$', caseSensitive: false), '');
+    url = url.replaceAll(RegExp(r'/api/v1/?$', caseSensitive: false), '');
+    url = url.replaceAll(RegExp(r'/api/?$', caseSensitive: false), '');
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    return url;
+  }
+
+  /// Guarda y aplica en caliente una nueva URL de backend sin recompilar
+  static Future<void> setCustomBaseUrl(String? rawUrl) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (rawUrl == null || rawUrl.trim().isEmpty) {
+      _overrideBaseUrl = null;
+      await prefs.remove(_prefsKey);
+    } else {
+      final normalized = normalizeBaseUrl(rawUrl);
+      _overrideBaseUrl = normalized;
+      await prefs.setString(_prefsKey, normalized);
+    }
+  }
+
+  static String? get customBaseUrl => _overrideBaseUrl;
+
+  // Lee la URL personalizada en memoria o la del .env
   static String get baseUrl =>
-      dotenv.env['BASE_URL'] ?? 'http://10.0.2.2:8010';
+      _overrideBaseUrl ??
+      normalizeBaseUrl(dotenv.env['BASE_URL'] ?? 'http://3.210.205.227');
 
   static String get _api => '$baseUrl/api/v1';
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:restaurante_movil/constants/api_constants.dart';
 import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
@@ -13,6 +14,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
+  await ApiConstants.init();
 
   final prefs = await SharedPreferences.getInstance();
   final bool onboardingDone = prefs.getBool('onboarding_done') ?? false;

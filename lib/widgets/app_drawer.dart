@@ -9,6 +9,7 @@ import 'package:restaurante_movil/screens/login_screen.dart';
 import 'package:restaurante_movil/screens/orders_screen.dart';
 import 'package:restaurante_movil/screens/profile_screen.dart';
 import 'package:restaurante_movil/screens/reservations_screen.dart';
+import 'package:restaurante_movil/widgets/backend_config_sheet.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -278,6 +279,18 @@ class AppDrawer extends StatelessWidget {
                 (route) => false,
               );
             },
+          ),
+          HiddenBackendTrigger(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                'v1.0.0 • Las Brazas',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
           ),
         ],
       ),

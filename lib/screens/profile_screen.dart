@@ -5,6 +5,7 @@ import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/addresses_screen.dart';
 import 'package:restaurante_movil/screens/delivery_driver_screen.dart';
 import 'package:restaurante_movil/screens/login_screen.dart';
+import 'package:restaurante_movil/widgets/backend_config_sheet.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -352,6 +353,20 @@ class ProfileScreen extends StatelessWidget {
           label: const Text(
             'Cerrar Sesión',
             style: TextStyle(color: Colors.red),
+          ),
+        ),
+        const SizedBox(height: 12),
+        HiddenBackendTrigger(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Las Brazas Steakhouse v1.0.0',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.withValues(alpha: 0.55),
+              ),
+            ),
           ),
         ),
       ],

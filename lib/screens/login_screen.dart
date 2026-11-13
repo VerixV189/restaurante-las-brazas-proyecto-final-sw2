@@ -4,6 +4,7 @@ import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
 import 'package:restaurante_movil/screens/register_screen.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
+import 'package:restaurante_movil/widgets/backend_config_sheet.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -96,7 +97,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const BrandLogo(size: 165),
+                  const HiddenBackendTrigger(
+                    child: BrandLogo(size: 165),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Cortes a la leña, pedidos en vivo y reservaciones',
