@@ -71,6 +71,46 @@ class OrderItemModel {
   }
 }
 
+class OrderCancellationInfo {
+  final String reason;
+  final int penaltyPercent;
+  final double penaltyAmount;
+  final double refundAmount;
+  final int penaltyPoints;
+  final String cancelledAt;
+
+  OrderCancellationInfo({
+    required this.reason,
+    required this.penaltyPercent,
+    required this.penaltyAmount,
+    required this.refundAmount,
+    required this.penaltyPoints,
+    required this.cancelledAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'reason': reason,
+        'penalty_percent': penaltyPercent,
+        'penalty_amount': penaltyAmount,
+        'refund_amount': refundAmount,
+        'penalty_points': penaltyPoints,
+        'cancelled_at': cancelledAt,
+      };
+
+  factory OrderCancellationInfo.fromJson(Map<String, dynamic> json) {
+    return OrderCancellationInfo(
+      reason: json['reason']?.toString() ?? 'Cancelado por el cliente',
+      penaltyPercent: (json['penalty_percent'] as num?)?.toInt() ?? 10,
+      penaltyAmount:
+          double.tryParse(json['penalty_amount']?.toString() ?? '0') ?? 0.0,
+      refundAmount:
+          double.tryParse(json['refund_amount']?.toString() ?? '0') ?? 0.0,
+      penaltyPoints: (json['penalty_points'] as num?)?.toInt() ?? 15,
+      cancelledAt: json['cancelled_at']?.toString() ?? '',
+    );
+  }
+}
+
 class OrderModel {
   final int id;
   final String orderType;
@@ -92,6 +132,7 @@ class OrderModel {
   final String? invoiceName;
   final String? invoiceTaxId;
   final List<OrderItemModel> items;
+  final OrderCancellationInfo? cancellationInfo;
 
   OrderModel({
     required this.id,
@@ -114,7 +155,86 @@ class OrderModel {
     this.invoiceName,
     this.invoiceTaxId,
     this.items = const [],
+    this.cancellationInfo,
   });
+
+  bool get isCancelled =>
+      status == 'cancelled' ||
+      tracking.current == 'cancelled' ||
+      cancellationInfo != null;
+
+  bool get canBeCancelled =>
+      !isCancelled &&
+      status != 'served' &&
+      status != 'delivered' &&
+      tracking.current != 'delivered';
+
+  /// Calcula el porcentaje de penalización según la etapa actual del pedido
+  int get applicablePenaltyPercent {
+    switch (tracking.current) {
+      case 'received':
+        return 10; // 10% cargo administrativo / reversión de pago
+      case 'in_kitchen':
+        return 30; // 30% merma de cortes ya puestos en parrilla/KDS
+      case 'ready':
+        return 50; // 50% platillos ya cocinados y empacados
+      case 'on_the_way':
+        return 70; // 70% comida preparada + despacho en ruta
+      default:
+        return 10;
+    }
+  }
+
+  /// Puntos de penalización adicionales por cancelación según la etapa
+  int get applicablePenaltyPoints {
+    switch (tracking.current) {
+      case 'received':
+        return 15;
+      case 'in_kitchen':
+        return 35;
+      case 'ready':
+        return 50;
+      case 'on_the_way':
+        return 75;
+      default:
+        return 15;
+    }
+  }
+
+  double get calculatedPenaltyAmount =>
+      double.parse((total * (applicablePenaltyPercent / 100.0)).toStringAsFixed(2));
+
+  double get calculatedRefundAmount =>
+      double.parse((total - calculatedPenaltyAmount).clamp(0.0, total).toStringAsFixed(2));
+
+  OrderModel copyWithCancellation(OrderCancellationInfo info) {
+    return OrderModel(
+      id: id,
+      orderType: orderType,
+      status: 'cancelled',
+      tracking: OrderTrackingModel(
+        current: 'cancelled',
+        steps: tracking.steps,
+      ),
+      subtotal: subtotal,
+      discount: discount,
+      tax: tax,
+      deliveryFee: deliveryFee,
+      total: total,
+      createdAt: createdAt,
+      itemsCount: itemsCount,
+      deliveryAddress: deliveryAddress,
+      deliveryLat: deliveryLat,
+      deliveryLng: deliveryLng,
+      deliveryPin: deliveryPin,
+      couponCode: couponCode,
+      notes: notes,
+      invoiceName: invoiceName,
+      invoiceTaxId: invoiceTaxId,
+      items: items,
+      cancellationInfo: info,
+    );
+  }
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final itemsList = (json['items'] is List)
@@ -160,6 +280,11 @@ class OrderModel {
       invoiceName: json['invoice_name']?.toString(),
       invoiceTaxId: json['invoice_tax_id']?.toString(),
       items: itemsList,
+      cancellationInfo: json['cancellation_info'] is Map<String, dynamic>
+          ? OrderCancellationInfo.fromJson(
+              json['cancellation_info'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -177,6 +302,7 @@ class OrderModel {
   }
 
   String get statusLabel {
+    if (isCancelled) return 'Cancelado';
     switch (status) {
       case 'pending':
         return 'Pendiente';
@@ -195,4 +321,3 @@ class OrderModel {
     }
   }
 }
-

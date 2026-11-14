@@ -41,7 +41,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  /// RF-14: Volver a pedir en un solo toque
   Future<void> _reorder(OrderModel order) async {
     try {
       final itemsRaw = await OrderService.reorder(order.id);
@@ -134,11 +133,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   ),
                                 ),
                                 Chip(
+                                  backgroundColor: o.isCancelled
+                                      ? Colors.red.shade100
+                                      : null,
                                   label: Text(
-                                    OrderTrackingModel.stepLabel(
-                                      o.tracking.current,
+                                    o.isCancelled
+                                        ? 'Cancelado'
+                                        : OrderTrackingModel.stepLabel(
+                                            o.tracking.current,
+                                          ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: o.isCancelled
+                                          ? Colors.red.shade900
+                                          : null,
+                                      fontWeight: o.isCancelled
+                                          ? FontWeight.bold
+                                          : null,
                                     ),
-                                    style: const TextStyle(fontSize: 12),
                                   ),
                                   visualDensity: VisualDensity.compact,
                                 ),
@@ -151,6 +163,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            if (o.cancellationInfo != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Penalización (${o.cancellationInfo!.penaltyPercent}%): -\$${o.cancellationInfo!.penaltyAmount.toStringAsFixed(2)} • Reembolso: \$${o.cancellationInfo!.refundAmount.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 8,
@@ -163,20 +186,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   label: const Text('Volver a pedir'),
                                 ),
                                 ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.push(
+                                  onPressed: () async {
+                                    await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) =>
                                             OrderDetailScreen(orderId: o.id),
                                       ),
                                     );
+                                    _loadOrders();
                                   },
-                                  icon: const Icon(
-                                    Icons.timeline,
+                                  icon: Icon(
+                                    o.canBeCancelled
+                                        ? Icons.manage_history
+                                        : Icons.timeline,
                                     size: 18,
                                   ),
-                                  label: const Text('Seguimiento'),
+                                  label: Text(
+                                    o.canBeCancelled
+                                        ? 'Seguimiento / Cancelar'
+                                        : 'Ver Detalle',
+                                  ),
                                 ),
                               ],
                             ),
@@ -196,4 +226,3 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 }
-

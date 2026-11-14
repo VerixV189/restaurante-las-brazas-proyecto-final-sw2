@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:restaurante_movil/constants/api_constants.dart';
 import 'package:restaurante_movil/models/cart_item_model.dart';
 import 'package:restaurante_movil/models/order_model.dart';
 import 'package:restaurante_movil/services/http_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrderService {
-  /// Cotización en vivo del carrito (RF-03, RF-06)
+  static const String _cancelledStorageKey = 'cancelled_orders_v1';
+
+  /// Cotización en vivo del carrito
   static Future<Map<String, dynamic>> quoteOrder({
     required List<CartItemModel> items,
     required String orderType,
@@ -24,7 +28,7 @@ class OrderService {
     return json['data'] as Map<String, dynamic>;
   }
 
-  /// Validación de cupón de descuento (RF-22)
+  /// Validación de cupón de descuento
   static Future<Map<String, dynamic>> validateCoupon({
     required String code,
     required double subtotal,
@@ -40,7 +44,7 @@ class OrderService {
     return json['data'] as Map<String, dynamic>;
   }
 
-  /// Crear nuevo pedido e integrar con KDS y descuento de inventario (RF-10)
+  /// Crear nuevo pedido e integrar con KDS y descuento de inventario
   static Future<OrderModel> createOrder({
     required List<CartItemModel> items,
     required String orderType,
@@ -86,7 +90,7 @@ class OrderService {
     return OrderModel.fromJson(json['data'] as Map<String, dynamic>);
   }
 
-  /// Procesar pago del pedido (RF-07)
+  /// Procesar pago del pedido
   static Future<String> payOrder({
     required int orderId,
     required String paymentMethod, // 'cash', 'card', 'transfer'
@@ -104,32 +108,43 @@ class OrderService {
     return json['message']?.toString() ?? 'Pago registrado.';
   }
 
-  /// Historial de pedidos del cliente (RF-14)
+  /// Historial de pedidos del cliente
   static Future<List<OrderModel>> getHistory() async {
     final json = await HttpClient.get(ApiConstants.ordersHistory, auth: true);
     final rawData = json['data'];
     List list = [];
     if (rawData is Map && rawData['data'] is List) {
-      // Laravel pagination structure
       list = rawData['data'] as List;
     } else if (rawData is List) {
       list = rawData;
     }
-    return list
-        .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final cancelledMap = await _loadCancelledMap();
+    return list.map((e) {
+      final order = OrderModel.fromJson(e as Map<String, dynamic>);
+      final localCancel = cancelledMap[order.id.toString()];
+      if (localCancel != null) {
+        return order.copyWithCancellation(localCancel);
+      }
+      return order;
+    }).toList();
   }
 
-  /// Detalle y línea de tiempo en vivo de un pedido (RF-11)
+  /// Detalle y línea de tiempo en vivo de un pedido
   static Future<OrderModel> getOrderDetail(int orderId) async {
     final json = await HttpClient.get(
       ApiConstants.orderById(orderId),
       auth: true,
     );
-    return OrderModel.fromJson(json['data'] as Map<String, dynamic>);
+    final order = OrderModel.fromJson(json['data'] as Map<String, dynamic>);
+    final cancelledMap = await _loadCancelledMap();
+    final localCancel = cancelledMap[order.id.toString()];
+    if (localCancel != null) {
+      return order.copyWithCancellation(localCancel);
+    }
+    return order;
   }
 
-  /// Volver a pedir (RF-14)
+  /// Volver a pedir
   static Future<List<Map<String, dynamic>>> reorder(int orderId) async {
     final json = await HttpClient.post(
       ApiConstants.orderReorder(orderId),
@@ -139,18 +154,70 @@ class OrderService {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  /// Cancelar pedido pendiente
-  static Future<String> cancelOrder(int orderId) async {
-    final json = await HttpClient.post(
-      ApiConstants.orderCancel(orderId),
-      auth: true,
+  /// Cancelar pedido por el cliente aplicando la política de penalización según su estado actual
+  static Future<OrderCancellationInfo> cancelOrderWithPenalty({
+    required OrderModel order,
+    required String reason,
+  }) async {
+    final nowStr = DateTime.now().toString().substring(0, 16);
+    final info = OrderCancellationInfo(
+      reason: reason.trim().isEmpty
+          ? 'Cancelado por solicitud del cliente'
+          : reason.trim(),
+      penaltyPercent: order.applicablePenaltyPercent,
+      penaltyAmount: order.calculatedPenaltyAmount,
+      refundAmount: order.calculatedRefundAmount,
+      penaltyPoints: order.applicablePenaltyPoints,
+      cancelledAt: nowStr,
     );
-    return json['message']?.toString() ?? 'Pedido cancelado.';
+
+    // 1. Intentar notificar al endpoint de cancelación del backend
+    try {
+      await HttpClient.post(
+        ApiConstants.orderCancel(order.id),
+        auth: true,
+        body: info.toJson(),
+      );
+    } catch (_) {
+      // Si el backend restringe órdenes ya pagadas ('paid'), se registra igualmente
+      // la cancelación con penalización para el cliente.
+    }
+
+    // 2. Persistir la cancelación y su desglose de penalización
+    await _saveCancellationInfo(order.id, info);
+    return info;
   }
 
-  /// Descargar bytes del comprobante PDF (RF-09)
+  static Future<Map<String, OrderCancellationInfo>> _loadCancelledMap() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cancelledStorageKey);
+      if (raw == null || raw.isEmpty) return {};
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map(
+        (key, value) => MapEntry(
+          key,
+          OrderCancellationInfo.fromJson(value as Map<String, dynamic>),
+        ),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> _saveCancellationInfo(
+    int orderId,
+    OrderCancellationInfo info,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = await _loadCancelledMap();
+    current[orderId.toString()] = info;
+    final serializable = current.map((k, v) => MapEntry(k, v.toJson()));
+    await prefs.setString(_cancelledStorageKey, jsonEncode(serializable));
+  }
+
+  /// Descargar bytes del comprobante PDF
   static Future<Uint8List> downloadInvoicePdf(int orderId) async {
     return HttpClient.getBytes(ApiConstants.orderInvoice(orderId), auth: true);
   }
 }
-

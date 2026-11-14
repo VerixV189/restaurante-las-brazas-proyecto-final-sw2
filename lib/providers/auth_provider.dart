@@ -106,6 +106,26 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Aplica la reversión de puntos del pedido cancelado + penalización en puntos de lealtad
+  Future<void> applyCancellationPenalty({
+    required int orderId,
+    required int earnedPointsToRevert,
+    required int penaltyPoints,
+    required double penaltyAmount,
+    required double refundAmount,
+  }) async {
+    final totalPointsDeducted = earnedPointsToRevert + penaltyPoints;
+    _loyaltyPoints = (_loyaltyPoints - totalPointsDeducted).clamp(0, 999999);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('loyalty_points', _loyaltyPoints);
+    pushNotification(
+      title: '⚠️ Pedido #$orderId Cancelado con Penalización',
+      body:
+          'Cargo por cancelación: -\$${penaltyAmount.toStringAsFixed(2)} • Reembolso neto: \$${refundAmount.toStringAsFixed(2)} • Penalización de fidelidad: -$penaltyPoints pts.',
+    );
+    notifyListeners();
+  }
+
   Future<void> toggleDietaryPreference(String pref) async {
     if (_dietaryPreferences.contains(pref)) {
       _dietaryPreferences.remove(pref);

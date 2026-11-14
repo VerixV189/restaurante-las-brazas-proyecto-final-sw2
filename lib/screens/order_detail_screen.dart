@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:restaurante_movil/models/address_model.dart';
 import 'package:restaurante_movil/models/order_model.dart';
+import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/services/location_service.dart';
 import 'package:restaurante_movil/services/order_service.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
@@ -22,6 +24,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Timer? _pollingTimer;
   double? _deviceLat;
   double? _deviceLng;
+
+  static const List<String> _cancelReasons = [
+    'Me equivoqué en los platillos o término de la carne',
+    'Cambio de planes / Ya no podré recibir el pedido',
+    'Tiempo de espera mayor al previsto',
+    'Dirección o modalidad de entrega incorrecta',
+  ];
 
   @override
   void initState() {
@@ -67,25 +76,274 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  Future<void> _cancelOrder() async {
+  /// Modal interactivo de Cancelación por el Cliente con Cálculo de Penalización
+  void _openCancelWithPenaltySheet() {
     if (_order == null) return;
-    try {
-      final msg = await OrderService.cancelOrder(_order!.id);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      _loadOrder();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red,
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-        ),
-      );
-    }
+    final o = _order!;
+    String selectedReason = _cancelReasons.first;
+    final customReasonCtrl = TextEditingController();
+    bool acceptedPenalty = false;
+    bool cancelling = false;
+
+    final stepName = OrderTrackingModel.stepLabel(o.tracking.current);
+    final penaltyPct = o.applicablePenaltyPercent;
+    final penaltyAmt = o.calculatedPenaltyAmount;
+    final refundAmt = o.calculatedRefundAmount;
+    final penaltyPts = o.applicablePenaltyPoints;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.red,
+                                size: 26,
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Cancelar Pedido y Penalización',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tu Pedido #${o.id} se encuentra actualmente en etapa "$stepName". Según la política de Las Brazas, cancelar en esta etapa aplica una penalización del $penaltyPct% por costos operativos e insumos.',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Tarjeta de desglose de penalización financiera y de puntos
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade300),
+                      ),
+                      child: Column(
+                        children: [
+                          _penaltyRow(
+                            'Total pagado del pedido',
+                            '\$${o.total.toStringAsFixed(2)}',
+                            color: Colors.black87,
+                          ),
+                          const SizedBox(height: 6),
+                          _penaltyRow(
+                            'Cargo por penalización ($penaltyPct%)',
+                            '-\$${penaltyAmt.toStringAsFixed(2)}',
+                            color: Colors.red.shade800,
+                            bold: true,
+                          ),
+                          const SizedBox(height: 6),
+                          _penaltyRow(
+                            'Penalización en Puntos Las Brazas',
+                            '-$penaltyPts pts (+ reversión de orden)',
+                            color: Colors.deepOrange.shade800,
+                          ),
+                          const Divider(height: 18),
+                          _penaltyRow(
+                            'Monto Neto a Reembolsar',
+                            '\$${refundAmt.toStringAsFixed(2)}',
+                            color: Colors.green.shade800,
+                            bold: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    const Text(
+                      'Selecciona el motivo de la cancelación:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ..._cancelReasons.map((r) {
+                      final isSelected = selectedReason == r;
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          isSelected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: isSelected ? Colors.red.shade700 : Colors.grey,
+                        ),
+                        title: Text(r, style: const TextStyle(fontSize: 13)),
+                        onTap: () => setModalState(() => selectedReason = r),
+                      );
+                    }),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: customReasonCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Detalle adicional (opcional)',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon: Icon(Icons.comment_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: acceptedPenalty,
+                      onChanged: (v) =>
+                          setModalState(() => acceptedPenalty = v ?? false),
+                      title: Text(
+                        'Acepto el cargo de penalización de \$${penaltyAmt.toStringAsFixed(2)} ($penaltyPct%) y la deducción de $penaltyPts puntos de fidelidad.',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: (!acceptedPenalty || cancelling)
+                            ? null
+                            : () async {
+                                setModalState(() => cancelling = true);
+                                final extra = customReasonCtrl.text.trim();
+                                final fullReason = extra.isNotEmpty
+                                    ? '$selectedReason ($extra)'
+                                    : selectedReason;
+
+                                final auth = context.read<AuthProvider>();
+                                final info =
+                                    await OrderService.cancelOrderWithPenalty(
+                                      order: o,
+                                      reason: fullReason,
+                                    );
+
+                                await auth.applyCancellationPenalty(
+                                  orderId: o.id,
+                                  earnedPointsToRevert: o.total.round(),
+                                  penaltyPoints: info.penaltyPoints,
+                                  penaltyAmount: info.penaltyAmount,
+                                  refundAmount: info.refundAmount,
+                                );
+
+                                if (!mounted) return;
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                setState(() {
+                                  _order = o.copyWithCancellation(info);
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.red.shade800,
+                                    content: Text(
+                                      'Pedido #${o.id} cancelado. Penalización: -\$${info.penaltyAmount.toStringAsFixed(2)} • Reembolso: \$${info.refundAmount.toStringAsFixed(2)}',
+                                    ),
+                                  ),
+                                );
+                              },
+                        icon: cancelling
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.cancel),
+                        label: Text(
+                          cancelling
+                              ? 'Aplicando cancelación...'
+                              : 'Confirmar Cancelación (-\$$penaltyAmt)',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
-  /// RF-09: Generación y descarga de Comprobante Digital / Factura PDF
+  Widget _penaltyRow(
+    String label,
+    String value, {
+    required Color color,
+    bool bold = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13.5,
+            color: color,
+            fontWeight: bold ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Generación y descarga de Comprobante Digital / Factura PDF
   Future<void> _openAndDownloadInvoice() async {
     if (_order == null) return;
     setState(() => _downloadingPdf = true);
@@ -305,9 +563,76 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // RF-19: Código PIN de 4 dígitos para confirmar entrega
-                  if (_order!.orderType == 'delivery' &&
-                      _order!.deliveryPin != null)
+                  // Si el pedido fue cancelado, mostrar el desglose de penalización aplicada
+                  if (_order!.isCancelled) ...[
+                    Card(
+                      color: Colors.red.shade50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: Colors.red.shade400),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.cancel,
+                                  color: Colors.red.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Pedido Cancelado con Penalización',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Colors.red.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_order!.cancellationInfo != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Motivo: ${_order!.cancellationInfo!.reason}',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                              const Divider(height: 16),
+                              _penaltyRow(
+                                'Penalización retenida (${_order!.cancellationInfo!.penaltyPercent}%)',
+                                '-\$${_order!.cancellationInfo!.penaltyAmount.toStringAsFixed(2)}',
+                                color: Colors.red.shade800,
+                                bold: true,
+                              ),
+                              const SizedBox(height: 4),
+                              _penaltyRow(
+                                'Penalización de fidelidad',
+                                '-${_order!.cancellationInfo!.penaltyPoints} pts',
+                                color: Colors.deepOrange.shade800,
+                              ),
+                              const SizedBox(height: 4),
+                              _penaltyRow(
+                                'Reembolso a favor del cliente',
+                                '\$${_order!.cancellationInfo!.refundAmount.toStringAsFixed(2)}',
+                                color: Colors.green.shade800,
+                                bold: true,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Código PIN de 4 dígitos para confirmar entrega (si está activo)
+                  if (!_order!.isCancelled &&
+                      _order!.orderType == 'delivery' &&
+                      _order!.deliveryPin != null) ...[
                     Card(
                       color: Colors.amber.shade50,
                       shape: RoundedRectangleBorder(
@@ -324,19 +649,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               color: Colors.deepOrange,
                             ),
                             const SizedBox(width: 12),
-                            Expanded(
+                            const Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'PIN de Seguridad para Entrega',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
                                     ),
                                   ),
-                                  const Text(
+                                  Text(
                                     'Muestra este código de 4 dígitos al repartidor al recibir tu pedido:',
-                                    style: TextStyle(fontSize: 12),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -364,10 +693,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                  ],
 
-                  const SizedBox(height: 12),
-
-                  // RF-11: Línea de Tiempo del Pedido en Tiempo Real
+                  // Línea de Tiempo del Pedido en Tiempo Real
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -388,7 +717,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               ),
                               Chip(
                                 label: Text(_order!.statusLabel),
-                                backgroundColor: Colors.deepPurple.shade50,
+                                backgroundColor: _order!.isCancelled
+                                    ? Colors.red.shade100
+                                    : Colors.deepPurple.shade50,
                               ),
                             ],
                           ),
@@ -400,7 +731,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
 
                   // Mapa interactivo de Tracking GPS del Repartidor
-                  if (_order!.orderType == 'delivery') ...[
+                  if (!_order!.isCancelled &&
+                      _order!.orderType == 'delivery') ...[
                     const SizedBox(height: 14),
                     const Text(
                       'Mapa de Tracking GPS en Tiempo Real',
@@ -487,7 +819,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
                   const SizedBox(height: 16),
 
-                  // RF-09: Botón Comprobante / Factura PDF
+                  // Botón Comprobante / Factura PDF
                   ElevatedButton.icon(
                     onPressed:
                         _downloadingPdf ? null : _openAndDownloadInvoice,
@@ -499,14 +831,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                   ),
 
-                  if (_order!.status == 'pending') ...[
+                  // Botón de Cancelar Pedido por el Cliente (con su penalización correspondiente)
+                  if (_order!.canBeCancelled) ...[
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
-                      onPressed: _cancelOrder,
-                      icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-                      label: const Text(
-                        'Cancelar Pedido (Aún no entró a cocina)',
-                        style: TextStyle(color: Colors.red),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red.shade600, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: _openCancelWithPenaltySheet,
+                      icon: const Icon(
+                        Icons.cancel_outlined,
+                        color: Colors.red,
+                      ),
+                      label: Text(
+                        'Cancelar Pedido (Penalización ${_order!.applicablePenaltyPercent}%: -\$${_order!.calculatedPenaltyAmount.toStringAsFixed(2)})',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -517,13 +860,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   List<Widget> _buildTimelineSteps(OrderTrackingModel tracking) {
-    if (tracking.current == 'cancelled') {
+    if (tracking.current == 'cancelled' || (_order?.isCancelled ?? false)) {
       return [
         const ListTile(
+          contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.cancel, color: Colors.red),
           title: Text(
-            'Pedido Cancelado',
+            'Pedido Cancelado por el Cliente',
             style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            'Se aplicó la política de penalización y reembolso parcial.',
           ),
         ),
       ];
@@ -552,7 +899,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 OrderTrackingModel.stepLabel(stepKey),
                 style: TextStyle(
                   fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                  color: isDone ? Colors.black87 : Colors.grey,
+                  color: isDone ? null : Colors.grey,
                   fontSize: isCurrent ? 15 : 14,
                 ),
               ),
@@ -579,4 +926,3 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     });
   }
 }
-
