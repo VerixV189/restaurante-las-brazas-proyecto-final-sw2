@@ -142,13 +142,24 @@ class HttpClient {
 
   static dynamic _handle(http.Response response) {
     dynamic json;
+    bool isJson = true;
     try {
       json = response.body.isNotEmpty ? jsonDecode(response.body) : {};
     } catch (_) {
-      json = {'message': 'Respuesta inválida del servidor'};
+      isJson = false;
+      json = {
+        'message':
+            'El servidor respondió con código HTTP ${response.statusCode} (no es JSON). Verifica la IP del backend o que Nginx/Laravel esté activo.',
+      };
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (!isJson) {
+        throw ApiException(
+          'Respuesta no válida del servidor (HTTP ${response.statusCode}). Verifica la URL del backend.',
+          response.statusCode,
+        );
+      }
       return json;
     }
     if (response.statusCode == 401) {

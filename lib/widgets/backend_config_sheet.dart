@@ -183,8 +183,8 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
               keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                labelText: 'URL o IP del Servidor',
-                hintText: 'http://3.210.205.227',
+                labelText: 'URL o Dominio del Servidor',
+                hintText: 'https://lasbrazas.ramio.tech',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.link),
                 suffixIcon: IconButton(
@@ -207,10 +207,12 @@ class _BackendConfigSheetState extends State<BackendConfigSheet> {
               runSpacing: 6,
               children: [
                 ActionChip(
-                  avatar: const Icon(Icons.cloud_outlined, size: 16),
-                  label: const Text('AWS: 3.210.205.227'),
+                  avatar: const Icon(Icons.cloud_done_outlined, size: 16),
+                  label: const Text('Prod: lasbrazas.ramio.tech'),
                   onPressed: () {
-                    setState(() => _urlCtrl.text = 'http://3.210.205.227');
+                    setState(
+                      () => _urlCtrl.text = 'https://lasbrazas.ramio.tech',
+                    );
                   },
                 ),
                 ActionChip(

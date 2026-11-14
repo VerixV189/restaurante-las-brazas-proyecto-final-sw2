@@ -2,6 +2,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
+  static const String defaultBaseUrl = 'https://lasbrazas.ramio.tech';
   static const String _prefsKey = 'custom_base_url';
   static const String _geminiKeyPrefs = 'custom_gemini_api_key';
   static String? _overrideBaseUrl;
@@ -12,7 +13,13 @@ class ApiConstants {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefsKey);
     if (saved != null && saved.trim().isNotEmpty) {
-      _overrideBaseUrl = normalizeBaseUrl(saved);
+      // Migrar automáticamente si tenía guardada la IP antigua sin el dominio HTTPS
+      if (saved.contains('3.210.205.227')) {
+        _overrideBaseUrl = defaultBaseUrl;
+        await prefs.setString(_prefsKey, defaultBaseUrl);
+      } else {
+        _overrideBaseUrl = normalizeBaseUrl(saved);
+      }
     }
     final savedGemini = prefs.getString(_geminiKeyPrefs);
     if (savedGemini != null && savedGemini.trim().isNotEmpty) {
@@ -20,12 +27,18 @@ class ApiConstants {
     }
   }
 
-  /// Normaliza cualquier URL o IP (incluso si pegan http://3.210.205.227/api/v1/health)
+  /// Normaliza cualquier URL, dominio o IP (incluso si pegan https://lasbrazas.ramio.tech/api/v1/health)
   static String normalizeBaseUrl(String raw) {
     var url = raw.trim();
-    if (url.isEmpty) return 'http://3.210.205.227';
+    if (url.isEmpty || url.contains('3.210.205.227')) {
+      return defaultBaseUrl;
+    }
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'http://$url';
+      final isLocal = url.startsWith('127.') ||
+          url.startsWith('10.') ||
+          url.startsWith('192.168.') ||
+          url.startsWith('localhost');
+      url = isLocal ? 'http://$url' : 'https://$url';
     }
     url = url.replaceAll(
       RegExp(r'/api/v1/health/?$', caseSensitive: false),
@@ -72,7 +85,7 @@ class ApiConstants {
   // Lee la URL personalizada en memoria o la del .env
   static String get baseUrl =>
       _overrideBaseUrl ??
-      normalizeBaseUrl(dotenv.env['BASE_URL'] ?? 'http://3.210.205.227');
+      normalizeBaseUrl(dotenv.env['BASE_URL'] ?? defaultBaseUrl);
 
   static String get _api => '$baseUrl/api/v1';
 
