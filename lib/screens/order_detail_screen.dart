@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:restaurante_movil/models/address_model.dart';
 import 'package:restaurante_movil/models/order_model.dart';
+import 'package:restaurante_movil/services/location_service.dart';
 import 'package:restaurante_movil/services/order_service.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
 import 'package:restaurante_movil/widgets/tracking_map_widget.dart';
@@ -19,15 +20,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _isLoading = true;
   bool _downloadingPdf = false;
   Timer? _pollingTimer;
+  double? _deviceLat;
+  double? _deviceLng;
 
   @override
   void initState() {
     super.initState();
     _loadOrder();
-    // Auto-refresco cada 8 segundos para Línea de Tiempo en Tiempo Real (RF-11)
+    _resolveDeviceLocation();
+    // Auto-refresco cada 8 segundos para Línea de Tiempo en Tiempo Real
     _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       _loadOrder(silent: true);
     });
+  }
+
+  Future<void> _resolveDeviceLocation() async {
+    try {
+      final place = await LocationService.getCurrentLocationWithAddress();
+      if (!mounted) return;
+      setState(() {
+        _deviceLat = place.latitude;
+        _deviceLng = place.longitude;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -396,8 +411,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     TrackingMapWidget(
-                      selectedLat: AddressModel.restaurantLat + 0.014,
-                      selectedLng: AddressModel.restaurantLng + 0.016,
+                      selectedLat: _order!.deliveryLat ??
+                          _deviceLat ??
+                          (AddressModel.restaurantLat + 0.005),
+                      selectedLng: _order!.deliveryLng ??
+                          _deviceLng ??
+                          (AddressModel.restaurantLng + 0.005),
                       showDriver: true,
                       driverProgress:
                           _driverProgressForStep(_order!.tracking.current),

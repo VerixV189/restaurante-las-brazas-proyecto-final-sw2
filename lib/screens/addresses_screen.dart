@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:restaurante_movil/models/address_model.dart';
 import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/services/customer_service.dart';
+import 'package:restaurante_movil/services/location_service.dart';
 import 'package:restaurante_movil/widgets/tracking_map_widget.dart';
 
 class AddressesScreen extends StatefulWidget {
@@ -16,11 +17,21 @@ class AddressesScreen extends StatefulWidget {
 class _AddressesScreenState extends State<AddressesScreen> {
   List<AddressModel> _addresses = [];
   bool _isLoading = true;
+  DetectedPlace? _cachedCurrentPlace;
 
   @override
   void initState() {
     super.initState();
     _loadAddresses();
+    _warmUpDeviceLocation();
+  }
+
+  Future<void> _warmUpDeviceLocation() async {
+    try {
+      final place = await LocationService.getCurrentLocationWithAddress();
+      if (!mounted) return;
+      setState(() => _cachedCurrentPlace = place);
+    } catch (_) {}
   }
 
   Future<void> _loadAddresses() async {
@@ -62,14 +73,30 @@ class _AddressesScreenState extends State<AddressesScreen> {
 
   void _openAddressModal({AddressModel? existing}) {
     String label = existing?.label ?? 'Casa';
-    final streetCtrl = TextEditingController(text: existing?.street ?? '');
-    final numberCtrl = TextEditingController(text: existing?.number ?? '');
+    final streetCtrl = TextEditingController(
+      text: existing?.street ?? (_cachedCurrentPlace?.street ?? ''),
+    );
+    final numberCtrl = TextEditingController(
+      text: existing?.number ?? (_cachedCurrentPlace?.number ?? ''),
+    );
     final floorCtrl = TextEditingController(text: existing?.floor ?? '');
-    final refCtrl = TextEditingController(text: existing?.reference ?? '');
-    double lat = existing?.latitude ?? (AddressModel.restaurantLat + 0.012);
-    double lng = existing?.longitude ?? (AddressModel.restaurantLng + 0.015);
+    final refCtrl = TextEditingController(
+      text: existing?.reference ??
+          (_cachedCurrentPlace?.zone != null
+              ? 'Zona ${_cachedCurrentPlace!.zone}'
+              : ''),
+    );
+    double lat = existing?.latitude ??
+        _cachedCurrentPlace?.latitude ??
+        (AddressModel.restaurantLat + 0.004);
+    double lng = existing?.longitude ??
+        _cachedCurrentPlace?.longitude ??
+        (AddressModel.restaurantLng + 0.004);
     bool isDefault = existing?.isDefault ?? _addresses.isEmpty;
     bool saving = false;
+    bool detectingGps = false;
+    String? detectedSummary = _cachedCurrentPlace?.displayName;
+    bool autoFetchedOnce = false;
 
     showModalBottomSheet(
       context: context,
@@ -81,6 +108,44 @@ class _AddressesScreenState extends State<AddressesScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            Future<void> detectGpsNow() async {
+              setModalState(() => detectingGps = true);
+              try {
+                final place =
+                    await LocationService.getCurrentLocationWithAddress();
+                if (!ctx.mounted) return;
+                setModalState(() {
+                  lat = place.latitude;
+                  lng = place.longitude;
+                  detectedSummary = place.displayName;
+                  if (place.street.isNotEmpty) {
+                    streetCtrl.text = place.street;
+                  }
+                  if (place.number != null && place.number!.isNotEmpty) {
+                    numberCtrl.text = place.number!;
+                  }
+                  if (place.zone != null &&
+                      place.zone!.isNotEmpty &&
+                      refCtrl.text.trim().isEmpty) {
+                    refCtrl.text = 'Zona ${place.zone}';
+                  }
+                });
+              } finally {
+                if (ctx.mounted) {
+                  setModalState(() => detectingGps = false);
+                }
+              }
+            }
+
+            if (existing == null &&
+                !autoFetchedOnce &&
+                _cachedCurrentPlace == null) {
+              autoFetchedOnce = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (ctx.mounted) detectGpsNow();
+              });
+            }
+
             final previewAddr = AddressModel(
               id: existing?.id ?? 0,
               label: label,
@@ -103,16 +168,38 @@ class _AddressesScreenState extends State<AddressesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      existing == null
-                          ? 'Nueva Dirección de Entrega'
-                          : 'Editar Dirección',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            existing == null
+                                ? 'Nueva Dirección de Entrega'
+                                : 'Editar Dirección',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: detectingGps ? null : detectGpsNow,
+                          icon: detectingGps
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.my_location, size: 18),
+                          label: Text(
+                            detectingGps ? 'Ubicando...' : 'Usar mi GPS',
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       children: ['Casa', 'Oficina', 'Pareja', 'Otro'].map((l) {
@@ -122,6 +209,100 @@ class _AddressesScreenState extends State<AddressesScreen> {
                           onSelected: (_) => setModalState(() => label = l),
                         );
                       }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Ubicación en Mapa GPS y Cobertura en Vivo',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    TrackingMapWidget(
+                      selectedLat: lat,
+                      selectedLng: lng,
+                      onSelectCoordinate: (coord) async {
+                        setModalState(() {
+                          lat = coord.dx;
+                          lng = coord.dy;
+                          detectingGps = true;
+                        });
+                        final place = await LocationService.reverseGeocode(
+                          coord.dx,
+                          coord.dy,
+                        );
+                        if (!ctx.mounted) return;
+                        setModalState(() {
+                          detectingGps = false;
+                          detectedSummary = place.displayName;
+                          if (place.street.isNotEmpty) {
+                            streetCtrl.text = place.street;
+                          }
+                          if (place.number != null &&
+                              place.number!.isNotEmpty) {
+                            numberCtrl.text = place.number!;
+                          }
+                        });
+                      },
+                    ),
+                    if (detectedSummary != null &&
+                        detectedSummary!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.pin_drop_outlined,
+                            size: 15,
+                            color: Colors.deepOrange,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              detectedSummary!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: inZone
+                            ? Colors.green.shade50
+                            : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: inZone ? Colors.green : Colors.red,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            inZone ? Icons.check_circle : Icons.warning_amber,
+                            color: inZone ? Colors.green : Colors.red,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              inZone
+                                  ? 'Dentro de zona de cobertura (${distKm.toStringAsFixed(1)} km de Las Brazas)'
+                                  : 'Fuera del radio de reparto (${distKm.toStringAsFixed(1)} km > ${AddressModel.maxCoverageRadiusKm.toInt()} km máx.)',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: inZone
+                                    ? Colors.green.shade900
+                                    : Colors.red.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -163,58 +344,6 @@ class _AddressesScreenState extends State<AddressesScreen> {
                         labelText: 'Punto de referencia (ej. Portón negro)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.place_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Ubicación en Mapa GPS y Cobertura',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    TrackingMapWidget(
-                      selectedLat: lat,
-                      selectedLng: lng,
-                      onSelectCoordinate: (coord) {
-                        setModalState(() {
-                          lat = coord.dx;
-                          lng = coord.dy;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: inZone
-                            ? Colors.green.shade50
-                            : Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: inZone ? Colors.green : Colors.red,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            inZone ? Icons.check_circle : Icons.warning_amber,
-                            color: inZone ? Colors.green : Colors.red,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              inZone
-                                  ? 'Dentro de zona de cobertura (${distKm.toStringAsFixed(1)} km de Las Brazas)'
-                                  : 'Fuera del radio de reparto (${distKm.toStringAsFixed(1)} km > ${AddressModel.maxCoverageRadiusKm.toInt()} km máx.)',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: inZone
-                                    ? Colors.green.shade900
-                                    : Colors.red.shade900,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                     CheckboxListTile(
@@ -341,15 +470,15 @@ class _AddressesScreenState extends State<AddressesScreen> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Registra Casa, Oficina o Pareja con ubicación GPS para tus envíos a domicilio.',
+                          'Registra Casa, Oficina o Pareja con tu ubicación GPS real para tus envíos a domicilio.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: () => _openAddressModal(),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Agregar primera dirección'),
+                          icon: const Icon(Icons.my_location),
+                          label: const Text('Detectar mi ubicación y agregar'),
                         ),
                       ],
                     ),
@@ -464,4 +593,3 @@ class _AddressesScreenState extends State<AddressesScreen> {
     );
   }
 }
-

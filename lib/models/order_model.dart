@@ -84,6 +84,8 @@ class OrderModel {
   final String? createdAt;
   final int itemsCount;
   final String? deliveryAddress;
+  final double? deliveryLat;
+  final double? deliveryLng;
   final String? deliveryPin;
   final String? couponCode;
   final String? notes;
@@ -104,6 +106,8 @@ class OrderModel {
     this.createdAt,
     required this.itemsCount,
     this.deliveryAddress,
+    this.deliveryLat,
+    this.deliveryLng,
     this.deliveryPin,
     this.couponCode,
     this.notes,
@@ -118,6 +122,17 @@ class OrderModel {
             .map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))
             .toList()
         : <OrderItemModel>[];
+
+    final dLat = json['delivery_lat'] != null
+        ? double.tryParse(json['delivery_lat'].toString())
+        : (json['latitude'] != null
+            ? double.tryParse(json['latitude'].toString())
+            : null);
+    final dLng = json['delivery_lng'] != null
+        ? double.tryParse(json['delivery_lng'].toString())
+        : (json['longitude'] != null
+            ? double.tryParse(json['longitude'].toString())
+            : null);
 
     return OrderModel(
       id: (json['id'] as num?)?.toInt() ?? 0,
@@ -137,6 +152,8 @@ class OrderModel {
       createdAt: json['created_at']?.toString(),
       itemsCount: (json['items_count'] as num?)?.toInt() ?? itemsList.length,
       deliveryAddress: json['delivery_address']?.toString(),
+      deliveryLat: dLat,
+      deliveryLng: dLng,
       deliveryPin: json['delivery_pin']?.toString(),
       couponCode: json['coupon_code']?.toString(),
       notes: json['notes']?.toString(),
