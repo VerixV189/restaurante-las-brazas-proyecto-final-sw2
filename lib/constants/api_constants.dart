@@ -132,7 +132,8 @@ class ApiConstants {
   static String deliveryPickup(int id) => '$_api/delivery/$id/pickup';
   static String deliveryConfirm(int id) => '$_api/delivery/$id/confirm';
 
-  // Endpoints de Asistente IA
+  // Endpoints de Asistente IA y Notificaciones Push
   static String get aiChatV1 => '$_api/ai/chat';
   static String get aiChat => '$baseUrl/ai/chat';
+  static String get notifications => '$_api/notifications';
 }

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:restaurante_movil/models/user_model.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
+import 'package:restaurante_movil/services/push_notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppNotification {
   final String title;
   final String body;
+  final String category; // 'promo' | 'order' | 'reservation'
   final DateTime createdAt;
   bool read;
 
   AppNotification({
     required this.title,
     required this.body,
+    this.category = 'promo',
     DateTime? createdAt,
     this.read = false,
   }) : createdAt = createdAt ?? DateTime.now();
@@ -20,13 +23,14 @@ class AppNotification {
 class AuthProvider extends ChangeNotifier {
   UserModel? _user;
   ThemeMode _themeMode = ThemeMode.system;
-  int _loyaltyPoints = 120; // Programa de Puntos / Cashback inicial (RF-23)
+  int _loyaltyPoints = 120;
   List<String> _dietaryPreferences = [];
   final List<AppNotification> _notifications = [
     AppNotification(
-      title: '🔥 ¡Bienvenido a Las Brazas!',
+      title: '🔥 ¡Bienvenido a Las Brazas Steakhouse!',
       body:
-          'Usa el cupón BRAZAS10 o disfruta envío gratis en pedidos mayores a \$50.',
+          'Usa el cupón BRAZAS10 para 10% de descuento o disfruta envío gratis en pedidos mayores a \$50.',
+      category: 'promo',
     ),
   ];
 
@@ -55,12 +59,31 @@ class AuthProvider extends ChangeNotifier {
     }
     notifyListeners();
     if (_user != null) {
+      _startRealtimePushWatcher();
       final fresh = await AuthService.fetchMe();
       if (fresh != null) {
         _user = fresh;
         notifyListeners();
       }
     }
+  }
+
+  void _startRealtimePushWatcher() {
+    PushNotificationService.startRealtimeWatcher(
+      onNewNotification: ({
+        required String title,
+        required String body,
+        required String category,
+        bool triggerNativePush = true,
+      }) {
+        pushNotification(
+          title: title,
+          body: body,
+          category: category,
+          triggerNativePush: triggerNativePush,
+        );
+      },
+    );
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -81,6 +104,7 @@ class AuthProvider extends ChangeNotifier {
 
   void setUser(UserModel user) {
     _user = user;
+    _startRealtimePushWatcher();
     notifyListeners();
   }
 
@@ -92,6 +116,8 @@ class AuthProvider extends ChangeNotifier {
       pushNotification(
         title: '🎁 +$points Puntos Las Brazas',
         body: reason,
+        category: 'promo',
+        triggerNativePush: false,
       );
     }
     notifyListeners();
@@ -102,6 +128,12 @@ class AuthProvider extends ChangeNotifier {
     _loyaltyPoints -= pointsToRedeem;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('loyalty_points', _loyaltyPoints);
+    pushNotification(
+      title: '🎟️ ¡Cupón BRAZAS10 Activado!',
+      body:
+          'Canjeaste $pointsToRedeem puntos de fidelidad por un 10% de descuento aplicado en tu carrito.',
+      category: 'promo',
+    );
     notifyListeners();
     return true;
   }
@@ -122,6 +154,7 @@ class AuthProvider extends ChangeNotifier {
       title: '⚠️ Pedido #$orderId Cancelado con Penalización',
       body:
           'Cargo por cancelación: -\$${penaltyAmount.toStringAsFixed(2)} • Reembolso neto: \$${refundAmount.toStringAsFixed(2)} • Penalización de fidelidad: -$penaltyPoints pts.',
+      category: 'order',
     );
     notifyListeners();
   }
@@ -137,11 +170,19 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void pushNotification({required String title, required String body}) {
+  void pushNotification({
+    required String title,
+    required String body,
+    String category = 'order',
+    bool triggerNativePush = true,
+  }) {
     _notifications.insert(
       0,
-      AppNotification(title: title, body: body),
+      AppNotification(title: title, body: body, category: category),
     );
+    if (triggerNativePush) {
+      PushNotificationService.showNativePush(title: title, body: body);
+    }
     notifyListeners();
   }
 
@@ -153,6 +194,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    PushNotificationService.stopRealtimeWatcher();
     await AuthService.logout();
     _user = null;
     notifyListeners();

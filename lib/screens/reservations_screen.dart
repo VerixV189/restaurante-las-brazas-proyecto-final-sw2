@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:restaurante_movil/models/reservation_model.dart';
+import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/services/reservation_service.dart';
 
 class ReservationsScreen extends StatefulWidget {
@@ -140,6 +142,12 @@ class _ReservationsScreenState extends State<ReservationsScreen>
         specialRequests: _specialRequestsCtrl.text,
       );
       if (!mounted) return;
+      context.read<AuthProvider>().pushNotification(
+        title: '🪑 Reserva de Mesa Confirmada',
+        body:
+            'Fecha: $_formattedDateTime • $_totalGuests comensales. Recuerda llegar puntual (15 min de tolerancia).',
+        category: 'reservation',
+      );
       _specialRequestsCtrl.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -166,6 +174,12 @@ class _ReservationsScreenState extends State<ReservationsScreen>
     try {
       final msg = await ReservationService.cancelReservation(r.id);
       if (!mounted) return;
+      context.read<AuthProvider>().pushNotification(
+        title: '⚠️ Reservación #${r.id} Cancelada',
+        body:
+            'Se canceló tu reserva del ${r.reservationDate} para ${r.guestCount} personas.',
+        category: 'reservation',
+      );
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       _loadAll();
     } catch (e) {

@@ -292,7 +292,7 @@ class ProfileScreen extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // Bandeja de Notificaciones Push de Estado
+        // Bandeja de Notificaciones Push de Estado, Reservas y Promociones
         Card(
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -303,7 +303,7 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Notificaciones de Estado',
+                        'Notificaciones Push en Vivo',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
@@ -320,15 +320,97 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const Text(
+                  'Se sincroniza automáticamente con el servidor para avisos de cocina, repartidor, reservas y promociones. También puedes probar una alerta Push nativa aquí:',
+                  style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      avatar: const Icon(
+                        Icons.local_fire_department,
+                        size: 15,
+                        color: Colors.deepOrange,
+                      ),
+                      label: const Text(
+                        'Push Promo',
+                        style: TextStyle(fontSize: 11.5),
+                      ),
+                      onPressed: () {
+                        auth.pushNotification(
+                          title: '🔥 ¡2x1 en Cortes y 10% OFF en Las Brazas!',
+                          body:
+                              'Hoy en Parrilla: Usa el código BRAZAS10 o ENVIOGRATIS en tu próximo pedido desde la app.',
+                          category: 'promo',
+                        );
+                      },
+                    ),
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      avatar: const Icon(
+                        Icons.delivery_dining,
+                        size: 15,
+                        color: Colors.green,
+                      ),
+                      label: const Text(
+                        'Push Pedido',
+                        style: TextStyle(fontSize: 11.5),
+                      ),
+                      onPressed: () {
+                        auth.pushNotification(
+                          title: '🛵 ¡El repartidor está a 500m de tu ubicación!',
+                          body:
+                              'Tu orden de Las Brazas está por llegar. Ten listo tu PIN de seguridad de 4 dígitos.',
+                          category: 'order',
+                        );
+                      },
+                    ),
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      avatar: const Icon(
+                        Icons.event_seat,
+                        size: 15,
+                        color: Colors.deepPurple,
+                      ),
+                      label: const Text(
+                        'Push Reserva',
+                        style: TextStyle(fontSize: 11.5),
+                      ),
+                      onPressed: () {
+                        auth.pushNotification(
+                          title: '🪑 Recordatorio de tu Reserva en Las Brazas',
+                          body:
+                              'Tu mesa en Terraza / Salón Principal te espera. Recuerda que tienes 15 minutos de tolerancia.',
+                          category: 'reservation',
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const Divider(height: 18),
                 ...auth.notifications.map(
                   (n) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                     leading: Icon(
-                      n.read
-                          ? Icons.notifications_none
-                          : Icons.notifications_active,
-                      color: n.read ? Colors.grey : Colors.deepOrange,
+                      n.category == 'promo'
+                          ? Icons.local_offer
+                          : n.category == 'reservation'
+                              ? Icons.event_seat
+                              : (n.read
+                                    ? Icons.notifications_none
+                                    : Icons.notifications_active),
+                      color: n.read
+                          ? Colors.grey
+                          : (n.category == 'promo'
+                                ? Colors.deepOrange
+                                : n.category == 'reservation'
+                                    ? Colors.deepPurple
+                                    : Colors.green.shade700),
                     ),
                     title: Text(
                       n.title,
