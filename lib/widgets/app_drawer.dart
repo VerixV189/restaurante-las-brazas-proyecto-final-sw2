@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurante_movil/providers/auth_provider.dart';
+import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/addresses_screen.dart';
 import 'package:restaurante_movil/screens/ai_assistant_screen.dart';
 import 'package:restaurante_movil/screens/cart_screen.dart';
@@ -236,17 +237,20 @@ class AppDrawer extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.delivery_dining, color: Colors.teal),
-            title: const Text('Módulo Repartidor (Delivery)'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DeliveryDriverScreen()),
-              );
-            },
-          ),
+          if (auth.isDriverOrAdmin)
+            ListTile(
+              leading: const Icon(Icons.delivery_dining, color: Colors.teal),
+              title: const Text('Módulo Repartidor (Delivery)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DeliveryDriverScreen(),
+                  ),
+                );
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.stars_outlined, color: Colors.amber),
             title: const Text('Mi Perfil y Puntos Cashback'),
@@ -271,6 +275,7 @@ class AppDrawer extends StatelessWidget {
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Cerrar sesión'),
             onTap: () async {
+              context.read<CartProvider>().resetSession();
               await context.read<AuthProvider>().logout();
               if (!context.mounted) return;
               Navigator.pushAndRemoveUntil(

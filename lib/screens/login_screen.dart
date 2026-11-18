@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurante_movil/providers/auth_provider.dart';
+import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
 import 'package:restaurante_movil/screens/register_screen.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
 import 'package:restaurante_movil/widgets/backend_config_sheet.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
+import 'package:restaurante_movil/widgets/connection_status_banner.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,7 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       if (!mounted) return;
-      context.read<AuthProvider>().setUser(user);
+      context.read<CartProvider>().resetSession();
+      await context.read<AuthProvider>().setUser(user);
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -79,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         actions: [
+          const ConnectionStatusBadge(),
           IconButton(
             tooltip: isDark ? 'Modo Claro' : 'Modo Oscuro',
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),

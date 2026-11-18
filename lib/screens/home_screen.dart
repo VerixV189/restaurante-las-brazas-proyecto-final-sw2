@@ -14,6 +14,7 @@ import 'package:restaurante_movil/screens/reservations_screen.dart';
 import 'package:restaurante_movil/services/menu_service.dart';
 import 'package:restaurante_movil/widgets/app_drawer.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
+import 'package:restaurante_movil/widgets/connection_status_banner.dart';
 import 'package:restaurante_movil/widgets/dish_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -131,6 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          // Pequeño botón/letrerito de estado Online / Offline (PWA)
+          ConnectionStatusBadge(onStatusChanged: _loadData),
           // Botón para alternar Modo Claro / Modo Oscuro con su logo correspondiente
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -150,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           // Icono de carrito con contador en vivo
           Padding(
-            padding: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.only(right: 4),
             child: IconButton(
               visualDensity: VisualDensity.compact,
               tooltip: 'Ver carrito',
@@ -170,14 +173,21 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       drawer: const AppDrawer(),
-      body: IndexedStack(
-        index: _currentTabIndex,
+      body: Column(
         children: [
-          _buildMenuDashboard(auth, cart),
-          const OrdersScreen(embedded: true),
-          const ReservationsScreen(embedded: true),
-          const AiAssistantScreen(embedded: true),
-          const ProfileScreen(embedded: true),
+          OfflineTopNoticeBanner(onReconnected: _loadData),
+          Expanded(
+            child: IndexedStack(
+              index: _currentTabIndex,
+              children: [
+                _buildMenuDashboard(auth, cart),
+                const OrdersScreen(embedded: true),
+                const ReservationsScreen(embedded: true),
+                const AiAssistantScreen(embedded: true),
+                const ProfileScreen(embedded: true),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

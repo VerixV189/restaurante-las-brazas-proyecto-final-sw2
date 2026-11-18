@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restaurante_movil/models/user_model.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
+import 'package:restaurante_movil/services/offline_cache_service.dart';
 import 'package:restaurante_movil/services/push_notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,17 +26,21 @@ class AuthProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   int _loyaltyPoints = 120;
   List<String> _dietaryPreferences = [];
-  final List<AppNotification> _notifications = [
-    AppNotification(
-      title: '🔥 ¡Bienvenido a Las Brazas Steakhouse!',
-      body:
-          'Usa el cupón BRAZAS10 para 10% de descuento o disfruta envío gratis en pedidos mayores a \$50.',
-      category: 'promo',
-    ),
-  ];
+  List<AppNotification> _notifications = _defaultWelcomeNotifications();
+
+  static List<AppNotification> _defaultWelcomeNotifications() => [
+        AppNotification(
+          title: '🔥 ¡Bienvenido a Las Brazas Steakhouse!',
+          body:
+              'Usa el cupón BRAZAS10 para 10% de descuento o disfruta envío gratis en pedidos mayores a \$50.',
+          category: 'promo',
+        ),
+      ];
 
   UserModel? get user => _user;
   bool get isAuthenticated => _user != null;
+  bool get isAdmin => _user?.isAdmin ?? false;
+  bool get isDriverOrAdmin => _user?.isDriverOrAdmin ?? false;
   ThemeMode get themeMode => _themeMode;
   int get loyaltyPoints => _loyaltyPoints;
   double get cashbackBalance => _loyaltyPoints * 0.10; // 10 pts = $1.00
@@ -44,11 +49,13 @@ class AuthProvider extends ChangeNotifier {
   int get unreadNotificationsCount =>
       _notifications.where((n) => !n.read).length;
 
+  String get _pointsPrefKey => 'loyalty_points_u_${_user?.id ?? 0}';
+  String get _dietPrefKey => 'dietary_prefs_u_${_user?.id ?? 0}';
+
   Future<void> initialize() async {
+    await OfflineCacheService.instance.init();
     _user = await AuthService.getSavedUser();
     final prefs = await SharedPreferences.getInstance();
-    _loyaltyPoints = prefs.getInt('loyalty_points') ?? 120;
-    _dietaryPreferences = prefs.getStringList('dietary_prefs') ?? [];
     final savedTheme = prefs.getString('theme_mode');
     if (savedTheme == 'dark') {
       _themeMode = ThemeMode.dark;
@@ -57,14 +64,23 @@ class AuthProvider extends ChangeNotifier {
     } else {
       _themeMode = ThemeMode.system;
     }
-    notifyListeners();
+
     if (_user != null) {
+      await OfflineCacheService.instance.enforceUserIsolationOnLogin(_user!);
+      _loyaltyPoints = prefs.getInt(_pointsPrefKey) ?? 120;
+      _dietaryPreferences = prefs.getStringList(_dietPrefKey) ?? [];
       _startRealtimePushWatcher();
+      notifyListeners();
+
       final fresh = await AuthService.fetchMe();
       if (fresh != null) {
         _user = fresh;
         notifyListeners();
       }
+    } else {
+      _loyaltyPoints = 120;
+      _dietaryPreferences = [];
+      notifyListeners();
     }
   }
 
@@ -102,8 +118,15 @@ class AuthProvider extends ChangeNotifier {
     await setThemeMode(isCurrentlyDark ? ThemeMode.light : ThemeMode.dark);
   }
 
-  void setUser(UserModel user) {
+  /// Al iniciar sesión con un nuevo usuario (ej. Cliente después de un Admin),
+  /// aísla completamente la sesión y purga cualquier dato de administrador previo.
+  Future<void> setUser(UserModel user) async {
     _user = user;
+    _notifications = _defaultWelcomeNotifications();
+    await OfflineCacheService.instance.enforceUserIsolationOnLogin(user);
+    final prefs = await SharedPreferences.getInstance();
+    _loyaltyPoints = prefs.getInt(_pointsPrefKey) ?? 120;
+    _dietaryPreferences = prefs.getStringList(_dietPrefKey) ?? [];
     _startRealtimePushWatcher();
     notifyListeners();
   }
@@ -111,7 +134,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> addLoyaltyPoints(int points, {String? reason}) async {
     _loyaltyPoints += points;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('loyalty_points', _loyaltyPoints);
+    await prefs.setInt(_pointsPrefKey, _loyaltyPoints);
     if (reason != null) {
       pushNotification(
         title: '🎁 +$points Puntos Las Brazas',
@@ -127,7 +150,7 @@ class AuthProvider extends ChangeNotifier {
     if (_loyaltyPoints < pointsToRedeem) return false;
     _loyaltyPoints -= pointsToRedeem;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('loyalty_points', _loyaltyPoints);
+    await prefs.setInt(_pointsPrefKey, _loyaltyPoints);
     pushNotification(
       title: '🎟️ ¡Cupón BRAZAS10 Activado!',
       body:
@@ -149,7 +172,7 @@ class AuthProvider extends ChangeNotifier {
     final totalPointsDeducted = earnedPointsToRevert + penaltyPoints;
     _loyaltyPoints = (_loyaltyPoints - totalPointsDeducted).clamp(0, 999999);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('loyalty_points', _loyaltyPoints);
+    await prefs.setInt(_pointsPrefKey, _loyaltyPoints);
     pushNotification(
       title: '⚠️ Pedido #$orderId Cancelado con Penalización',
       body:
@@ -166,7 +189,7 @@ class AuthProvider extends ChangeNotifier {
       _dietaryPreferences.add(pref);
     }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('dietary_prefs', _dietaryPreferences);
+    await prefs.setStringList(_dietPrefKey, _dietaryPreferences);
     notifyListeners();
   }
 
@@ -193,10 +216,17 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cierra sesión purgando todos los datos en memoria y caché de Administrador/Staff
+  /// para que ningún usuario posterior pueda visualizar datos de la cuenta anterior.
   Future<void> logout() async {
+    final previousUser = _user;
     PushNotificationService.stopRealtimeWatcher();
+    await OfflineCacheService.instance.purgeSessionOnLogout(previousUser);
     await AuthService.logout();
     _user = null;
+    _loyaltyPoints = 120;
+    _dietaryPreferences = [];
+    _notifications = _defaultWelcomeNotifications();
     notifyListeners();
   }
 }

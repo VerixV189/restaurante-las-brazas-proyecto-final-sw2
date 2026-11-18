@@ -1,13 +1,14 @@
 {
-    "name": "restaurante_movil",
-    "short_name": "restaurante_movil",
+    "name": "Las Brazas Steakhouse",
+    "short_name": "Las Brazas",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#181A1F",
+    "theme_color": "#E8832A",
+    "description": "Las Brazas Steakhouse — Menú digital a las brasas, pedidos con Modo Offline, tracking GPS en vivo y reservaciones de mesas.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["food", "lifestyle", "shopping"],
     "icons": [
         {
             "src": "icons/Icon-192.png",

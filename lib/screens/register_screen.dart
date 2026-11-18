@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurante_movil/providers/auth_provider.dart';
+import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
@@ -41,7 +42,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneController.text,
       );
       if (!mounted) return;
-      context.read<AuthProvider>().setUser(user);
+      context.read<CartProvider>().resetSession();
+      await context.read<AuthProvider>().setUser(user);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('¡Bienvenido a Las Brazas, ${user.name}!')),
       );

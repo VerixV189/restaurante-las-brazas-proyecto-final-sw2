@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:restaurante_movil/models/delivery_order_model.dart';
+import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/services/delivery_service.dart';
 import 'package:restaurante_movil/widgets/tracking_map_widget.dart';
 
@@ -32,6 +34,18 @@ class _DeliveryDriverScreenState extends State<DeliveryDriverScreen>
   }
 
   Future<void> _loadDeliveries() async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isDriverOrAdmin) {
+      setState(() {
+        _pending = [];
+        _mine = [];
+        _isLoading = false;
+        _roleNotice =
+            'Acceso Restringido: Esta sesión pertenece a un Cliente. Los datos de Administrador y Repartidor están protegidos y ocultos.';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _roleNotice = null;

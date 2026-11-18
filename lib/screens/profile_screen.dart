@@ -29,17 +29,68 @@ class ProfileScreen extends StatelessWidget {
     final body = ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Tarjeta de Perfil con Logo Oficial
+        // Tarjeta de Perfil con Logo Oficial y Estado de Aislamiento de Rol
         Card(
-          child: ListTile(
-            leading: const BrandLogo(size: 54, circular: true),
-            title: Text(
-              user?.name ?? 'Cliente Las Brazas',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const BrandLogo(size: 54, circular: true),
+                  title: Text(
+                    user?.name ?? 'Cliente Las Brazas',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${user?.email ?? ''}\nRol activo: ${user?.role ?? 'Cliente'}',
+                  ),
+                  isThreeLine: true,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: auth.isDriverOrAdmin
+                          ? Colors.amber.withValues(alpha: 0.15)
+                          : Colors.green.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          auth.isDriverOrAdmin
+                              ? Icons.admin_panel_settings_outlined
+                              : Icons.verified_user_outlined,
+                          size: 16,
+                          color: auth.isDriverOrAdmin
+                              ? Colors.deepOrange
+                              : Colors.green.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            auth.isDriverOrAdmin
+                                ? 'Sesión de ${user?.role}: Al cerrar sesión, todos los datos administrativos se borran automáticamente del dispositivo.'
+                                : 'Sesión Aislada de Cliente: Los módulos y datos de Administrador están bloqueados y ocultos.',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            subtitle:
-                Text('${user?.email ?? ''}\nRol: ${user?.role ?? 'Cliente'}'),
-            isThreeLine: true,
           ),
         ),
         const SizedBox(height: 14),
@@ -257,7 +308,7 @@ class ProfileScreen extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // Accesos rápidos a Libreta de Direcciones y Panel Repartidor
+        // Accesos rápidos (Panel Repartidor/Admin visible únicamente si el rol es Administrador o Repartidor)
         Card(
           child: Column(
             children: [
@@ -272,20 +323,26 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.delivery_dining),
-                title: const Text('Panel de Repartidor'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const DeliveryDriverScreen(),
-                    ),
-                  );
-                },
-              ),
+              if (auth.isDriverOrAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.delivery_dining),
+                  title: const Text('Panel de Repartidor / Despacho'),
+                  subtitle: const Text(
+                    'Exclusivo para Repartidor o Administrador',
+                    style: TextStyle(fontSize: 11.5),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DeliveryDriverScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -430,6 +487,7 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: () async {
+            context.read<CartProvider>().resetSession();
             await auth.logout();
             if (!context.mounted) return;
             Navigator.pushAndRemoveUntil(

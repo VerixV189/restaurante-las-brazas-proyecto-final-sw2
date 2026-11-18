@@ -1,39 +1,52 @@
 import 'package:restaurante_movil/constants/api_constants.dart';
 import 'package:restaurante_movil/models/reservation_model.dart';
+import 'package:restaurante_movil/services/auth_service.dart';
 import 'package:restaurante_movil/services/http_client.dart';
+import 'package:restaurante_movil/services/offline_cache_service.dart';
 
 class ReservationService {
-  /// Zonas / Áreas disponibles con capacidad total (RF-12)
+  /// Zonas / Áreas disponibles con capacidad total (con soporte Offline)
   static Future<List<AreaModel>> getAreas() async {
-    final json = await HttpClient.get(ApiConstants.areas, auth: true);
-    final list = json['data'] as List? ?? [];
-    return list
-        .map((e) => AreaModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final json = await HttpClient.get(ApiConstants.areas, auth: true);
+      final list = json['data'] as List? ?? [];
+      await OfflineCacheService.instance.cacheAreas(list);
+      return list
+          .map((e) => AreaModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      final cached = await OfflineCacheService.instance.getCachedAreas();
+      return cached.map(AreaModel.fromJson).toList();
+    }
   }
 
-  /// Validar aforo en tiempo real por fecha/hora y número de comensales (RF-12)
+  /// Validar aforo en tiempo real por fecha/hora y número de comensales
   static Future<List<AreaModel>> checkAvailability({
-    required String dateFormatted, // 'YYYY-MM-DD HH:mm'
+    required String dateFormatted,
     required int guests,
   }) async {
-    final json = await HttpClient.get(
-      ApiConstants.reservationsAvailability,
-      auth: true,
-      queryParameters: {
-        'date': dateFormatted,
-        'guests': guests.toString(),
-      },
-    );
-    final list = json['data'] as List? ?? [];
-    return list
-        .map((e) => AreaModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final json = await HttpClient.get(
+        ApiConstants.reservationsAvailability,
+        auth: true,
+        queryParameters: {
+          'date': dateFormatted,
+          'guests': guests.toString(),
+        },
+      );
+      final list = json['data'] as List? ?? [];
+      return list
+          .map((e) => AreaModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      final cached = await OfflineCacheService.instance.getCachedAreas();
+      return cached.map(AreaModel.fromJson).toList();
+    }
   }
 
-  /// Crear nueva reservación móvil (RF-12)
+  /// Crear nueva reservación móvil
   static Future<Map<String, dynamic>> createReservation({
-    required String reservationDate, // 'YYYY-MM-DD HH:mm'
+    required String reservationDate,
     required int adults,
     int children = 0,
     required int areaId,
@@ -60,10 +73,21 @@ class ReservationService {
     };
   }
 
-  /// Obtener reservas activas e historial (RF-13)
+  /// Obtener reservas activas e historial estrictamente aisladas para el usuario actual
   static Future<Map<String, List<ReservationModel>>> getReservations() async {
-    final json = await HttpClient.get(ApiConstants.reservations, auth: true);
-    final data = json['data'] as Map<String, dynamic>? ?? {};
+    final user = await AuthService.getSavedUser();
+    final uid = user?.id ?? 0;
+    if (uid <= 0) return {'active': [], 'history': []};
+
+    Map<String, dynamic> data;
+    try {
+      final json = await HttpClient.get(ApiConstants.reservations, auth: true);
+      data = json['data'] as Map<String, dynamic>? ?? {};
+      await OfflineCacheService.instance.cacheUserReservations(uid, data);
+    } catch (_) {
+      data = await OfflineCacheService.instance.getCachedUserReservations(uid);
+    }
+
     final activeRaw = data['active'] as List? ?? [];
     final historyRaw = data['history'] as List? ?? [];
     return {
@@ -76,7 +100,7 @@ class ReservationService {
     };
   }
 
-  /// Cancelar reserva con anticipación mínima (RF-13)
+  /// Cancelar reserva con anticipación mínima
   static Future<String> cancelReservation(int id) async {
     final json = await HttpClient.post(
       ApiConstants.reservationCancel(id),
@@ -85,4 +109,3 @@ class ReservationService {
     return json['message']?.toString() ?? 'Reserva cancelada.';
   }
 }
-

@@ -3,11 +3,17 @@ import 'dart:typed_data';
 import 'package:restaurante_movil/constants/api_constants.dart';
 import 'package:restaurante_movil/models/cart_item_model.dart';
 import 'package:restaurante_movil/models/order_model.dart';
+import 'package:restaurante_movil/services/auth_service.dart';
 import 'package:restaurante_movil/services/http_client.dart';
+import 'package:restaurante_movil/services/offline_cache_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OrderService {
-  static const String _cancelledStorageKey = 'cancelled_orders_v1';
+  static Future<String> _userCancelledKey() async {
+    final user = await AuthService.getSavedUser();
+    final uid = user?.id ?? 0;
+    return 'cancelled_orders_u_$uid';
+  }
 
   /// Cotización en vivo del carrito
   static Future<Map<String, dynamic>> quoteOrder({
@@ -108,16 +114,27 @@ class OrderService {
     return json['message']?.toString() ?? 'Pago registrado.';
   }
 
-  /// Historial de pedidos del cliente
+  /// Historial de pedidos estrictamente aislado para el usuario autenticado actual
   static Future<List<OrderModel>> getHistory() async {
-    final json = await HttpClient.get(ApiConstants.ordersHistory, auth: true);
-    final rawData = json['data'];
+    final currentUser = await AuthService.getSavedUser();
+    final uid = currentUser?.id ?? 0;
+    if (uid <= 0) return [];
+
     List list = [];
-    if (rawData is Map && rawData['data'] is List) {
-      list = rawData['data'] as List;
-    } else if (rawData is List) {
-      list = rawData;
+    try {
+      final json = await HttpClient.get(ApiConstants.ordersHistory, auth: true);
+      final rawData = json['data'];
+      if (rawData is Map && rawData['data'] is List) {
+        list = rawData['data'] as List;
+      } else if (rawData is List) {
+        list = rawData;
+      }
+      // Guardar en caché offline sólo para este usuario (y sólo si no es admin, o se purga al salir)
+      await OfflineCacheService.instance.cacheUserOrders(uid, list);
+    } catch (_) {
+      list = await OfflineCacheService.instance.getCachedUserOrders(uid);
     }
+
     final cancelledMap = await _loadCancelledMap();
     return list.map((e) {
       final order = OrderModel.fromJson(e as Map<String, dynamic>);
@@ -131,11 +148,27 @@ class OrderService {
 
   /// Detalle y línea de tiempo en vivo de un pedido
   static Future<OrderModel> getOrderDetail(int orderId) async {
-    final json = await HttpClient.get(
-      ApiConstants.orderById(orderId),
-      auth: true,
-    );
-    final order = OrderModel.fromJson(json['data'] as Map<String, dynamic>);
+    final currentUser = await AuthService.getSavedUser();
+    final uid = currentUser?.id ?? 0;
+
+    OrderModel? order;
+    try {
+      final json = await HttpClient.get(
+        ApiConstants.orderById(orderId),
+        auth: true,
+      );
+      order = OrderModel.fromJson(json['data'] as Map<String, dynamic>);
+    } catch (_) {
+      final cachedList =
+          await OfflineCacheService.instance.getCachedUserOrders(uid);
+      final match = cachedList.where((o) => o['id'] == orderId).toList();
+      if (match.isNotEmpty) {
+        order = OrderModel.fromJson(match.first);
+      } else {
+        rethrow;
+      }
+    }
+
     final cancelledMap = await _loadCancelledMap();
     final localCancel = cancelledMap[order.id.toString()];
     if (localCancel != null) {
@@ -171,19 +204,14 @@ class OrderService {
       cancelledAt: nowStr,
     );
 
-    // 1. Intentar notificar al endpoint de cancelación del backend
     try {
       await HttpClient.post(
         ApiConstants.orderCancel(order.id),
         auth: true,
         body: info.toJson(),
       );
-    } catch (_) {
-      // Si el backend restringe órdenes ya pagadas ('paid'), se registra igualmente
-      // la cancelación con penalización para el cliente.
-    }
+    } catch (_) {}
 
-    // 2. Persistir la cancelación y su desglose de penalización
     await _saveCancellationInfo(order.id, info);
     return info;
   }
@@ -191,12 +219,13 @@ class OrderService {
   static Future<Map<String, OrderCancellationInfo>> _loadCancelledMap() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_cancelledStorageKey);
+      final key = await _userCancelledKey();
+      final raw = prefs.getString(key);
       if (raw == null || raw.isEmpty) return {};
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       return decoded.map(
-        (key, value) => MapEntry(
-          key,
+        (k, value) => MapEntry(
+          k,
           OrderCancellationInfo.fromJson(value as Map<String, dynamic>),
         ),
       );
@@ -210,10 +239,11 @@ class OrderService {
     OrderCancellationInfo info,
   ) async {
     final prefs = await SharedPreferences.getInstance();
+    final key = await _userCancelledKey();
     final current = await _loadCancelledMap();
     current[orderId.toString()] = info;
     final serializable = current.map((k, v) => MapEntry(k, v.toJson()));
-    await prefs.setString(_cancelledStorageKey, jsonEncode(serializable));
+    await prefs.setString(key, jsonEncode(serializable));
   }
 
   /// Descargar bytes del comprobante PDF

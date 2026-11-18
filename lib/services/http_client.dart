@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:restaurante_movil/services/auth_service.dart';
+import 'package:restaurante_movil/services/offline_cache_service.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -14,7 +15,7 @@ class ApiException implements Exception {
 }
 
 class HttpClient {
-  static const Duration _timeout = Duration(seconds: 15);
+  static const Duration _timeout = Duration(seconds: 12);
 
   static Future<Map<String, String>> _headers({bool auth = false}) async {
     final headers = <String, String>{
@@ -30,11 +31,18 @@ class HttpClient {
     return headers;
   }
 
+  static void _checkManualOffline() {
+    if (OfflineCacheService.instance.isManualOffline) {
+      throw ApiException('Modo Offline activo (operando con caché local)', 503);
+    }
+  }
+
   static Future<dynamic> get(
     String url, {
     bool auth = false,
     Map<String, String>? queryParameters,
   }) async {
+    _checkManualOffline();
     try {
       Uri uri = Uri.parse(url);
       if (queryParameters != null && queryParameters.isNotEmpty) {
@@ -43,11 +51,13 @@ class HttpClient {
       final response = await http
           .get(uri, headers: await _headers(auth: auth))
           .timeout(_timeout);
+      OfflineCacheService.instance.reportNetworkSuccess();
       return _handle(response);
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw ApiException('No se pudo conectar con el servidor');
+      OfflineCacheService.instance.reportNetworkFailure();
+      throw ApiException('No se pudo conectar con el servidor (Modo Offline)');
     }
   }
 
@@ -56,6 +66,7 @@ class HttpClient {
     Map<String, dynamic>? body,
     bool auth = false,
   }) async {
+    _checkManualOffline();
     try {
       final response = await http
           .post(
@@ -64,11 +75,13 @@ class HttpClient {
             body: jsonEncode(body ?? {}),
           )
           .timeout(_timeout);
+      OfflineCacheService.instance.reportNetworkSuccess();
       return _handle(response);
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw ApiException('No se pudo conectar con el servidor');
+      OfflineCacheService.instance.reportNetworkFailure();
+      throw ApiException('No se pudo conectar con el servidor (Modo Offline)');
     }
   }
 
@@ -77,6 +90,7 @@ class HttpClient {
     Map<String, dynamic>? body,
     bool auth = false,
   }) async {
+    _checkManualOffline();
     try {
       final response = await http
           .put(
@@ -85,11 +99,13 @@ class HttpClient {
             body: jsonEncode(body ?? {}),
           )
           .timeout(_timeout);
+      OfflineCacheService.instance.reportNetworkSuccess();
       return _handle(response);
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw ApiException('No se pudo conectar con el servidor');
+      OfflineCacheService.instance.reportNetworkFailure();
+      throw ApiException('No se pudo conectar con el servidor (Modo Offline)');
     }
   }
 
@@ -97,6 +113,7 @@ class HttpClient {
     String url, {
     bool auth = false,
   }) async {
+    _checkManualOffline();
     try {
       final response = await http
           .delete(
@@ -104,15 +121,18 @@ class HttpClient {
             headers: await _headers(auth: auth),
           )
           .timeout(_timeout);
+      OfflineCacheService.instance.reportNetworkSuccess();
       return _handle(response);
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw ApiException('No se pudo conectar con el servidor');
+      OfflineCacheService.instance.reportNetworkFailure();
+      throw ApiException('No se pudo conectar con el servidor (Modo Offline)');
     }
   }
 
   static Future<Uint8List> getBytes(String url, {bool auth = true}) async {
+    _checkManualOffline();
     try {
       final headers = <String, String>{
         'Accept': 'application/pdf',
@@ -126,6 +146,7 @@ class HttpClient {
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(_timeout);
+      OfflineCacheService.instance.reportNetworkSuccess();
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.bodyBytes;
       }
@@ -136,6 +157,7 @@ class HttpClient {
     } on ApiException {
       rethrow;
     } catch (_) {
+      OfflineCacheService.instance.reportNetworkFailure();
       throw ApiException('Error de red al descargar el comprobante PDF');
     }
   }
@@ -181,6 +203,9 @@ class HttpClient {
         throw ApiException(json['message'].toString(), response.statusCode);
       }
     }
-    throw ApiException('Error del servidor (${response.statusCode})', response.statusCode);
+    throw ApiException(
+      'Error del servidor (${response.statusCode})',
+      response.statusCode,
+    );
   }
 }

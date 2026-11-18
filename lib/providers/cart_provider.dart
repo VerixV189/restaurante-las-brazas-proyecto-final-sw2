@@ -215,5 +215,19 @@ class CartProvider extends ChangeNotifier {
     _backendEstimatedMinutes = null;
     notifyListeners();
   }
+
+  /// Purga por completo los datos de sesión del carrito (incluyendo dirección seleccionada) al hacer logout/login
+  void resetSession() {
+    _items.clear();
+    _selectedAddress = null;
+    _selectedTableId = 1;
+    _orderType = 'delivery';
+    _couponCode = null;
+    _discount = 0.0;
+    _freeShippingCoupon = false;
+    _tax = 0.0;
+    _backendEstimatedMinutes = null;
+    notifyListeners();
+  }
 }
 
