@@ -95,6 +95,7 @@ class ApiConstants {
   // Endpoints de Autenticación
   static String get login => '$_api/auth/login';
   static String get register => '$_api/auth/register';
+  static String get googleAuth => '$_api/auth/google';
   static String get me => '$_api/auth/me';
   static String get logout => '$_api/auth/logout';
 

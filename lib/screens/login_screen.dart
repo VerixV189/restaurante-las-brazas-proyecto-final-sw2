@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:restaurante_movil/providers/auth_provider.dart';
 import 'package:restaurante_movil/providers/cart_provider.dart';
 import 'package:restaurante_movil/screens/home_screen.dart';
+import 'package:restaurante_movil/screens/legal_document_screen.dart';
 import 'package:restaurante_movil/screens/register_screen.dart';
 import 'package:restaurante_movil/services/auth_service.dart';
 import 'package:restaurante_movil/widgets/backend_config_sheet.dart';
 import 'package:restaurante_movil/widgets/brand_logo.dart';
 import 'package:restaurante_movil/widgets/connection_status_banner.dart';
+import 'package:restaurante_movil/widgets/google_auth_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
   @override
@@ -61,23 +64,52 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _handleSocialAuth(String providerName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Conectando con $providerName... Completa o registra tu cuenta Las Brazas.',
-        ),
-      ),
-    );
-    Navigator.push(
+  Future<void> _continueWithGoogle() async {
+    final selected = await showGoogleAccountPicker(
       context,
-      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+      prefillEmail: _emailController.text.trim(),
     );
+    if (selected == null || !mounted) return;
+
+    setState(() => _isGoogleLoading = true);
+    try {
+      final result = await AuthService.continueWithGoogle(
+        email: selected.email,
+        name: selected.name,
+      );
+      if (!mounted) return;
+      context.read<CartProvider>().resetSession();
+      final auth = context.read<AuthProvider>();
+      await auth.setUser(result.user);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.green.shade700,
+          content: Text('¡Bienvenido con Google, ${result.user.name}!'),
+        ),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red.shade700,
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    const orangeAccent = Color(0xFFD85A1A);
 
     return Scaffold(
       appBar: AppBar(
@@ -86,7 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
           const ConnectionStatusBadge(),
           IconButton(
             tooltip: isDark ? 'Modo Claro' : 'Modo Oscuro',
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            icon: Icon(
+              isDark ? Icons.light_mode : Icons.dark_mode,
+              color: const Color(0xFFE8832A),
+            ),
             onPressed: () {
               context.read<AuthProvider>().toggleDarkMode(isDark);
             },
@@ -101,24 +136,63 @@ class _LoginScreenState extends State<LoginScreen> {
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const HiddenBackendTrigger(
-                    child: BrandLogo(size: 165),
+                  const Center(
+                    child: HiddenBackendTrigger(
+                      child: BrandLogo(size: 136, borderRadius: 22),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   const Text(
-                    'Cortes a la leña, pedidos en vivo y reservaciones',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    'Acceso a Las Brazas',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Ingresa tus credenciales de comensal o personal administrativo',
+                    style: TextStyle(fontSize: 12.5, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // Botón de acceso rápido con Google OAuth 2.0 (igual a Login.vue)
+                  GoogleContinueButton(
+                    loading: _isGoogleLoading,
+                    onPressed: _continueWithGoogle,
+                  ),
+
+                  const SizedBox(height: 16),
+                  const Row(
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'O CONTINÚA CON TU CORREO',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.6,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Correo electrónico',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -130,14 +204,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Contraseña',
                       prefixIcon: const Icon(Icons.lock_outline),
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
@@ -159,75 +235,106 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
                   SizedBox(
-                    width: double.infinity,
                     height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
-                      child: _isLoading
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: orangeAccent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed:
+                          (_isLoading || _isGoogleLoading) ? null : _login,
+                      icon: _isLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text(
-                              'Iniciar Sesión',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
                               ),
-                            ),
+                            )
+                          : const Icon(Icons.login),
+                      label: Text(
+                        _isLoading ? 'Ingresando...' : 'Iniciar Sesión',
+                        style: const TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'O continúa con',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _handleSocialAuth('Google Sign-In'),
-                          icon: const Icon(Icons.g_mobiledata, size: 24),
-                          label: const Text('Google'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _handleSocialAuth('Apple ID'),
-                          icon: const Icon(Icons.apple, size: 20),
-                          label: const Text('Apple'),
-                        ),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterScreen(),
+                  const Divider(),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '¿No tienes cuenta de comensal?',
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RegisterScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Regístrate aquí',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: orangeAccent,
+                          ),
                         ),
-                      );
-                    },
-                    child: const Text(
-                      '¿No tienes cuenta? Regístrate aquí',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalDocumentScreen(
+                                type: LegalDocType.terms,
+                                showAcceptButton: false,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Términos y Condiciones',
+                          style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                        ),
+                      ),
+                      const Text('•', style: TextStyle(color: Colors.grey)),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalDocumentScreen(
+                                type: LegalDocType.privacy,
+                                showAcceptButton: false,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Política de Privacidad',
+                          style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
